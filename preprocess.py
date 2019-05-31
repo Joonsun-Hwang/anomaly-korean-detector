@@ -1,8 +1,6 @@
 import os
 import json
 import numpy as np
-import requests
-from bs4 import BeautifulSoup as bs
 
 # 초성 리스트. 00 ~ 18
 first_sound_list = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ']
@@ -13,8 +11,9 @@ last_sound_list = [' ', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 
 
 number_list = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']
 symbol_list = ['`', '~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '_', '=', '+', '\\', '|', '[', ']', '{', '}', ';', ':', '"', "'", ',', '.', '<', '>', '?', '/']
+english_list = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
 
-special_tokens = ['<pad>', '<start>', '<end>', '<mask>', '<unk>']
+special_tokens = ['<syllable_pad>', '<morpheme_pad>', '<unk>']
 
 
 # parameters
@@ -22,7 +21,7 @@ vector_dim = 300
 
 # file paths
 here = os.path.dirname(os.path.abspath(__file__))
-file_path_vocabs_map = os.path.join(here, 'data', 'vocabs_map.json')
+file_path_tokens_map = os.path.join(here, 'data', 'tokens_map.json')
 file_path_vectors_map = os.path.join(here, 'data', 'vectors_map.txt')
 
 
@@ -42,7 +41,7 @@ def normalized_random_vector(dim=300):
 
 
 if __name__ == '__main__':
-    token_list = first_sound_list + middle_sound_list + last_sound_list + number_list + symbol_list + special_tokens
+    token_list = first_sound_list + middle_sound_list + last_sound_list + number_list + symbol_list + english_list + special_tokens
     token_set = sorted(set(token_list))
 
     i = 0
@@ -51,7 +50,7 @@ if __name__ == '__main__':
         token_dict[token] = i
         i = i + 1
 
-    with open(file_path_vocabs_map, 'w') as o:
+    with open(file_path_tokens_map, 'w') as o:
         json.dump(token_dict, o)
 
     with open(file_path_vectors_map, 'w') as o:
