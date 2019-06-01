@@ -1,1 +1,1 @@
-# korean-typo-model
+# anomaly-korean-detector
