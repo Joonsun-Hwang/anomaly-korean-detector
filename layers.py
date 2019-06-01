@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+
 class SyllableLayer(nn.Module):
     def __init__(self, type, num_layers, input_size=3, embedding_size=300, output_size=1, max_len_morpheme=5):
         super(SyllableLayer, self).__init__()

@@ -24,10 +24,11 @@ shuffle_dataset = True
 
 start_epoch = 0
 epochs = 1000
-batch_size = 2
+batch_size = 3
 encoder_lr = 1e-4  # learning rate for encoder
 decoder_lr = 4e-4  # learning rate for decoder
 print_freq = 1  # print training status every 100 iterations, print validation status every epoch
+
 
 def main():
     language = Language(file_path_tokens_map=file_path_tokens_map, file_path_vectors_map=file_path_vectors_map)
@@ -54,7 +55,11 @@ def main():
     validation_loader = torch.utils.data.DataLoader(korean_dataset, batch_size=batch_size, sampler=valid_sampler,
                                                     pin_memory=True, drop_last=True)
 
-    for i, (plain_words, enc_words, len_inputs) in enumerate(train_loader):
+    for i, (num_morpheme, origin_sentence, enc_sentence) in enumerate(train_loader):
+        # enc_sentence: (batch_size, len_sentence, len_morpheme, len_phoneme)
+        print(num_morpheme, origin_sentence, enc_sentence.size())
+        break
+
 
 
 if __name__ == '__main__':
