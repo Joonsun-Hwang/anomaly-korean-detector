@@ -4,10 +4,89 @@ import torch.nn as nn
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # sets device for model and PyTorch tensors
 
 
+class AttentionLayer(nn.Module):
+    def __init__(self, embedding_size, len_morpheme, attention_type='general'):
+        super(AttentionLayer, self).__init__()
+
+        if attention_type not in ['dot', 'general']:
+            raise ValueError('Invalid attention type selected.')
+        else:
+            self.attention_type = attention_type
+
+        if self.attention_type == 'general':
+            self.linear_in_syllable = nn.Linear(embedding_size, embedding_size, bias=False)
+            self.linear_in_morpheme = nn.Linear(len_morpheme, len_morpheme, bias=False)
+        self.linear_out_morpheme = nn.Linear(len_morpheme*2, len_morpheme, bias=False)
+        self.softmax = nn.Softmax(dim=-1)
+        self.tanh = nn.Tanh()
+
+    def forward(self, inputs, mask):  # self-attention
+        # inputs: (batch_size, len_sentence, len_morpheme, embedding_size)
+        # mask: (batch_size, len_sentence, len_morpheme, 1)
+
+        batch_size = inputs.size(0)
+        len_sentence = inputs.size(1)
+        len_morpheme = inputs.size(2)
+        embedding_size = inputs.size(3)
+        mask = torch.cat([mask]*embedding_size, dim=3)  # (batch_size, len_sentence, len_morpheme, embedding_size)
+
+        inputs_morpheme = inputs.view(-1, len_morpheme, embedding_size)  # (batch_size * len_sentence, len_morpheme, embedding_size)
+        mask_morpheme = mask.view(-1, len_morpheme, embedding_size)
+        inputs_sentence = inputs.transpose(2, 3).transpose(1, 2).contiguous()
+        mask_sentence = mask.transpose(2, 3).transpose(1, 2).contiguous()
+        inputs_sentence = inputs_sentence.view(-1, len_sentence, len_morpheme)  # (batch_size * embedding_size, len_sentence, len_morpheme)
+        mask_sentence = mask_sentence.view(-1, len_sentence, len_morpheme)
+
+        if self.attention_type == 'general':
+            inputs_morpheme = inputs_morpheme.view(-1, embedding_size)
+            inputs_sentence = inputs_sentence.view(-1, len_morpheme)
+            inputs_morpheme = self.linear_in_syllable(inputs_morpheme)
+            inputs_sentence = self.linear_in_morpheme(inputs_sentence)
+            inputs_morpheme = inputs_morpheme.view(-1, len_morpheme, embedding_size)
+            inputs_sentence = inputs_sentence.view(-1, len_sentence, len_morpheme)
+
+        attention_scores_morpheme = torch.bmm(inputs_morpheme, inputs_morpheme.transpose(1, 2).contiguous())  # (batch_size*len_sentence, len_morpheme, len_morpheme)
+        attention_scores_sentence = torch.bmm(inputs_sentence, inputs_sentence.transpose(1, 2).contiguous())  # (batch_size*embedding_size, len_sentence, len_sentence)
+        attention_mask_morpheme = torch.bmm(mask_morpheme, mask_morpheme.transpose(1, 2).contiguous())
+        attention_mask_sentence = torch.bmm(mask_sentence, mask_sentence.transpose(1, 2).contiguous())
+
+        attention_scores_morpheme = attention_scores_morpheme.view(-1, len_morpheme)
+        attention_scores_sentence = attention_scores_sentence.view(-1, len_sentence)
+        attention_mask_morpheme = attention_mask_morpheme.view(-1, len_morpheme)
+        attention_mask_sentence = attention_mask_sentence.view(-1, len_sentence)
+        attention_mask_morpheme = attention_mask_morpheme > 0
+        attention_mask_sentence = attention_mask_sentence > 0
+
+        attention_scores_morpheme[~attention_mask_morpheme] = float('-inf')
+        attention_scores_sentence[~attention_mask_sentence] = float('-inf')
+
+        attention_weights_morpheme = self.softmax(attention_scores_morpheme)
+        attention_weights_sentence = self.softmax(attention_scores_sentence)
+        attention_weights_morpheme = attention_weights_morpheme.view(-1, len_morpheme, len_morpheme)
+        attention_weights_sentence = attention_weights_sentence.view(-1, len_sentence, len_sentence)
+
+        mix = torch.bmm(attention_weights_morpheme, inputs_morpheme)  # (batch_size*len_sentence, len_morpheme, embedding_size)
+        mix = mix.view(batch_size, len_sentence, len_morpheme, embedding_size)
+        mix = mix.transpose(2, 3).transpose(1, 2).contiguous()
+        mix = mix.view(-1, len_sentence, len_morpheme)
+        mix = torch.bmm(attention_weights_sentence, mix)  # (batch_size*len_sentence, len_sentence, len_morpheme)
+
+        combined = torch.cat((mix, inputs_sentence), dim=2)  # (batch_size*len_sentence, len_sentence, len_morpheme*2)
+        combined = combined.view(-1, len_morpheme*2)
+
+        output = self.linear_out_morpheme(combined).view(batch_size, len_sentence, len_morpheme, embedding_size)
+        output = self.tanh(output)
+
+        return output
+
+
 class SyllableLayer(nn.Module):
     def __init__(self, layer_type, num_layers, language, vocab_size,
-                 embedding_size=300, input_size=3, output_size=1, max_len_morpheme=5):
+                 embedding_size=300, input_size=3, output_size=1):
         super(SyllableLayer, self).__init__()
+
+        if layer_type not in ['linear', 'lstm']:
+            raise ValueError('Invalid syllable layer type selected.')
 
         self.embedding = nn.Embedding(vocab_size, embedding_size)
         self.set_embedding_param(language.get_vectors())  # init embedding weight
@@ -27,8 +106,9 @@ class SyllableLayer(nn.Module):
         self.layer_type = layer_type
 
     def forward(self, inputs):
+        # inputs: (batch_size, len_sentence, len_morpheme, len_phoneme)
         inputs = self.embedding(inputs)  # (batch_size, len_sentence, len_morpheme, len_phoneme, embedding_size)
-        inputs = inputs.transpose(3, 4)  # (batch_size, len_sentence, len_morpheme, embedding_size, len_phoneme)
+        inputs = inputs.transpose(3, 4).contiguous()  # (batch_size, len_sentence, len_morpheme, embedding_size, len_phoneme)
 
         batch_size = inputs.size(0)
         len_sentence = inputs.size(1)
@@ -42,7 +122,9 @@ class SyllableLayer(nn.Module):
             if hasattr(self, 'h0'):
                 outputs, (hn, cn) = layer(inputs, (self.h0, self.c0))
             else:
+                inputs = inputs.view(-1, len_phoneme)
                 outputs = layer(inputs)
+                outputs = outputs.view(-1, embedding_size, len_phoneme)
             inputs = outputs
 
         outputs = inputs.squeeze()
@@ -61,3 +143,57 @@ class SyllableLayer(nn.Module):
 
     def set_embedding_param(self, pretrained_weight):
         self.embedding.weight.data.copy_(torch.from_numpy(pretrained_weight))
+
+
+class MorphemeLayer(nn.Module):
+    def __init__(self, layer_type, num_layers,
+                 input_size, embedding_size=300, output_size=1):
+        super(MorphemeLayer, self).__init__()
+
+        if layer_type not in ['linear', 'lstm']:
+            raise ValueError('Invalid morpheme layer type selected.')
+
+        self.layers = {}
+        if layer_type == 'linear':
+            i = 0
+            for n in range(num_layers-1):
+                self.layers[n] = nn.Linear(in_features=input_size, out_features=input_size).to(device)
+                i = i + 1
+            self.layers[i] = nn.Linear(in_features=input_size, out_features=output_size).to(device)
+        elif layer_type == 'lstm':
+            self.layers[0] = nn.LSTM(input_size=input_size, hidden_size=output_size, num_layers=num_layers).to(device)
+            self.h0 = torch.randn(num_layers, embedding_size, output_size).to(device)
+            self.c0 = torch.randn(num_layers, embedding_size, output_size).to(device)
+
+        self.layer_type = layer_type
+
+    def forward(self, inputs):
+        # inputs: (batch_size, len_sentence, len_morpheme, embedding_size)
+        inputs = inputs.transpose(2, 3).contiguous()  # (batch_size, len_sentence, embedding_size, len_morpheme)
+
+        batch_size = inputs.size(0)
+        len_sentence = inputs.size(1)
+        embedding_size = inputs.size(2)
+        len_morpheme = inputs.size(3)
+
+        inputs = inputs.view(-1, embedding_size, len_morpheme)
+
+        for layer in self.layers.values():
+            if hasattr(self, 'h0'):
+                outputs, (hn, cn) = layer(inputs, (self.h0, self.c0))
+            else:
+                inputs = inputs.view(-1, len_morpheme)
+                outputs = layer(inputs)
+                outputs = outputs.view(-1, embedding_size, len_morpheme)
+            inputs = outputs
+
+        outputs = inputs.squeeze()
+        outputs = outputs.view(batch_size, len_sentence, embedding_size)
+        return outputs
+
+    def get_lstm_hidden0_weight(self):
+        return self.h0, self.c0
+
+    def set_lstm_hidden0_weight(self, h0, c0):
+        self.h0 = h0
+        self.c0 = c0

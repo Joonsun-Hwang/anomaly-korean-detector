@@ -36,6 +36,21 @@ def get_korean_phonemes_list():
     return sorted(set(token_list))
 
 
+def get_korean_first_sound_list():
+    token_list = first_sound_list
+    return sorted(set(token_list))
+
+
+def get_korean_middle_sound_list():
+    token_list = middle_sound_list
+    return sorted(set(token_list))
+
+
+def get_korean_last_sound_list():
+    token_list = last_sound_list
+    return sorted(set(token_list))
+
+
 # def crawler(url, selector):
 #     req = requests.get(url)
 #     html = req.text
