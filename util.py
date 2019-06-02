@@ -57,6 +57,19 @@ def korean_into_phoneme(text):
     return phoneme_list
 
 
+def clip_gradient(optimizer, grad_clip):
+    """
+    Clips gradients computed during back-propagation to avoid explosion of gradients.
+
+    :param optimizer: optimizer with the gradients to be clipped
+    :param grad_clip: clip value
+    """
+    for group in optimizer.param_groups:
+        for param in group['params']:
+            if param.grad is not None:
+                param.grad.data.clamp_(-grad_clip, grad_clip)
+
+
 if __name__ == '__main__':
     # print(morpheme_list_into_phoneme(['황', '준', '선', '이', 'ㅂ니다', '.']))
     # print(phoneme_into_korean(['황', '준', '선', '이', 'ㅂ니다', '.']))

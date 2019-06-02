@@ -24,8 +24,13 @@ class KoreanDataset(Dataset):
             for line in lines:
                 sentence_phoneme = korean_into_phoneme(line.strip())
                 if len(sentence_phoneme) <= max_len_sentence:
+                    i = 0
                     for morpheme_phoneme in sentence_phoneme:
-                        if len(morpheme_phoneme) < max_len_morpheme:
+                        if len(morpheme_phoneme) <= max_len_morpheme:
+                            i += 1
+                        else:
+                            pass
+                        if len(sentence_phoneme) == i:
                             self.data.append(line.strip())
 
         self.where_continuous = 'next'  # 연속적인 문장 체크, none: 연속 문장 없음, next: 다음 문장과 연속, previous: 이전 문장과 연속
@@ -62,6 +67,8 @@ class KoreanDataset(Dataset):
             noise_type = 'no'
 
         continuity_threshold = np.random.uniform(0, 1, 1)
+        if not self.continuous:
+            continuity_threshold = 0
         if continuity_threshold < 0.5:
             continuity_type = 'no'
         else:
