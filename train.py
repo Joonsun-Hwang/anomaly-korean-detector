@@ -9,6 +9,7 @@ from language import Language
 from dataset import KoreanDataset
 from models import AnomalyKoreanDetector
 from util import clip_gradient
+from preprocess import init_vectors_map
 
 here = os.path.dirname(os.path.abspath(__file__))
 file_path_data = os.path.join(here, 'data', 'toy_data.txt')
@@ -21,9 +22,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # sets de
 noise = True
 continuous = False
 if continuous:
-    max_len_sentence = 50 * 2
+    max_len_sentence = 100 * 2
 else:
-    max_len_sentence = 50
+    max_len_sentence = 100
 max_len_morpheme = 5
 embedding_dim = 300  # dimension of substring embedding
 phoneme_in_size = 3
@@ -60,13 +61,16 @@ checkpoint = None  # checkpoint path or none
 
 def main():
     # Vocabulary
+    if checkpoint is None:
+        init_vectors_map()
     language = Language(file_path_tokens_map=file_path_tokens_map, file_path_vectors_map=file_path_vectors_map)
     vocab_size = language.get_n_tokens()
     print('total vocab_size:', vocab_size)
 
     # Dataset
     korean_dataset = KoreanDataset(file_path_data=file_path_data, file_path_tokens_map=file_path_tokens_map,
-                                   max_len_sentence=50, max_len_morpheme=5, noise=noise, continuous=continuous)
+                                   max_len_sentence=max_len_sentence, max_len_morpheme=max_len_morpheme,
+                                   noise=noise, continuous=continuous)
     dataset_size = len(korean_dataset)
     print('total dataset_size:', dataset_size)
     indices = list(range(dataset_size))
@@ -118,7 +122,6 @@ def main():
         for i, (noise_type, continuity_type, num_morpheme, origin_sentence, enc_sentence, mask) in enumerate(train_loader):
             # enc_sentence: (batch_size, len_sentence, len_morpheme, len_phoneme)
             # print(num_morpheme, origin_sentence, enc_sentence.size())
-
             enc_sentence = enc_sentence.to(device)
             mask = mask.to(device)
             outputs_is_noise, outputs_is_next = model(enc_sentence, mask)
@@ -146,7 +149,7 @@ def main():
             else:
                 raise ValueError('There is no loss')
 
-            print(loss)
+            print(float(loss))
 
             model_optimizer.zero_grad()
             loss.backward()

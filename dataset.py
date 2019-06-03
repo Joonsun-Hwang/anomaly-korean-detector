@@ -4,7 +4,7 @@ import numpy as np
 import json
 
 from util import korean_into_phoneme
-from preprocess import get_korean_phonemes_list, get_korean_first_sound_list, get_korean_middle_sound_list, get_korean_last_sound_list
+from preprocess import get_korean_phonemes_list
 
 
 class KoreanDataset(Dataset):
@@ -22,7 +22,7 @@ class KoreanDataset(Dataset):
         with open(file_path_data, 'r', encoding='utf-8') as f:
             lines = f.readlines()
             for line in lines:
-                sentence_phoneme = korean_into_phoneme(line.strip())
+                sentence_phoneme = korean_into_phoneme(line.strip(), noise='no')
                 if len(sentence_phoneme) <= max_len_sentence:
                     i = 0
                     for morpheme_phoneme in sentence_phoneme:
@@ -33,7 +33,8 @@ class KoreanDataset(Dataset):
                         if len(sentence_phoneme) == i:
                             self.data.append(line.strip())
 
-        self.where_continuous = 'next'  # 연속적인 문장 체크, none: 연속 문장 없음, next: 다음 문장과 연속, previous: 이전 문장과 연속
+        self.where_continuous = []  # 연속적인 문장 체크, none: 연속 문장 없음, next: 다음 문장과 연속, previous: 이전 문장과 연속
+        # TODO: 다음 문장과 연속인지 체크, 안되면 이전 문장과 연속인지 체크, 아무것도 없다면 연속 문장 없음으로 체크
 
         with open(file_path_tokens_map, 'r') as f:
             self.token_map = json.loads(f.read())
@@ -73,11 +74,10 @@ class KoreanDataset(Dataset):
             continuity_type = 'no'
         else:
             continuity_type = 'yes'
-        # TODO: encoding 할 때 noise 반영하기
         # TODO: continuity_type 에 따라 연속 문장 반환
 
         origin_sentence = self.data[i]
-        sentence_phoneme = korean_into_phoneme(origin_sentence)
+        sentence_phoneme = korean_into_phoneme(text=origin_sentence, noise=noise_type)
         num_morpheme = len(sentence_phoneme)
         mask = [[[1]]] * num_morpheme  # 의미 있는 부분: 1, padding 부분: 0
 

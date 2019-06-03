@@ -11,7 +11,7 @@ last_sound_list = ['<empty_last_sound>', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ
 
 number_list = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']
 symbol_list = ['`', '~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '_', '=', '+', '\\', '|', '[', ']', '{', '}', ';', ':', '"', "'", ',', '.', '<', '>', '?', '/', ' ']
-english_list = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
+alphabet_list = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
 
 special_tokens = ['<phoneme_pad>', '<unk>']
 
@@ -51,17 +51,23 @@ def get_korean_last_sound_list():
     return sorted(set(token_list))
 
 
-# def crawler(url, selector):
-#     req = requests.get(url)
-#     html = req.text
-#     soup = bs(html, 'html.parser')
-#     elements = soup.select(selector)
-#     for element in elements:
-#         print(element.text)
+def get_number_list():
+    token_list = number_list
+    return sorted(set(token_list))
 
 
-if __name__ == '__main__':
-    token_list = first_sound_list + middle_sound_list + last_sound_list + number_list + symbol_list + english_list + special_tokens
+def get_alphabet_list():
+    token_list = alphabet_list
+    return sorted(set(token_list))
+
+
+def get_symbol_list():
+    token_list = symbol_list
+    return sorted(set(token_list))
+
+
+def init_vectors_map():
+    token_list = first_sound_list + middle_sound_list + last_sound_list + number_list + symbol_list + alphabet_list + special_tokens
     token_set = sorted(set(token_list))
 
     i = 0
@@ -78,11 +84,21 @@ if __name__ == '__main__':
             vector_map = str(value) + ' ' + normalized_random_vector(dim=vector_dim) + '\n'
             o.write(vector_map)
 
-    # crawler('https://www.topikguide.com/6000-most-common-korean-words-1/', selector='body > div.site-container > div.site-inner > div > div > main > article > div > table > tbody > tr > td:nth-child(2) > p')
 
-    # with open(file_path_vocabs_map, 'r') as i:
-    #     a = json.loads(i.read())
-    #     print(a)
+if __name__ == '__main__':
+    token_list = first_sound_list + middle_sound_list + last_sound_list + number_list + symbol_list + alphabet_list + special_tokens
+    token_set = sorted(set(token_list))
 
-    # with open(file_path_vectors_map, 'r') as i:
-    #     lines = i.readlines()
+    i = 0
+    token_dict = {}
+    for token in token_set:
+        token_dict[token] = i
+        i = i + 1
+
+    with open(file_path_tokens_map, 'w') as o:
+        json.dump(token_dict, o)
+
+    with open(file_path_vectors_map, 'w') as o:
+        for key, value in token_dict.items():
+            vector_map = str(value) + ' ' + normalized_random_vector(dim=vector_dim) + '\n'
+            o.write(vector_map)
