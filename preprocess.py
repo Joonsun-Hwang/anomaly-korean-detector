@@ -26,6 +26,7 @@ special_tokens = ['<phoneme_pad>', '<unk>']
 # parameters
 vector_dim = 300
 max_len_sentence = 50
+min_len_sentence = 10
 max_len_morpheme = 5
 
 # file paths
@@ -96,10 +97,23 @@ def init_vectors_map():
             o.write(vector_map)
 
 
+def check_appropriate_sentence(text):
+    sentence_phoneme = korean_into_phoneme(text.strip())
+    if len(sentence_phoneme) < max_len_sentence and len(sentence_phoneme) > min_len_sentence:
+        for morpheme_phoneme in sentence_phoneme:
+            if len(morpheme_phoneme) > max_len_morpheme:
+                return False
+        return True
+    else:
+        return False
+
+
 def ko_wiki_pre_process(file_path_ko_wiki_data, file_path_preprocessed_data):
     with open(file_path_preprocessed_data, 'w', encoding='utf-8') as o:
-        for path_name in os.listdir(file_path_ko_wiki_data):
-            for file_name in os.listdir(os.path.join(file_path_ko_wiki_data, path_name)):
+        path_name_list = os.listdir(file_path_ko_wiki_data)
+        for path_name in path_name_list:
+            file_name_list = os.listdir(os.path.join(file_path_ko_wiki_data, path_name))
+            for file_name in file_name_list:
                 print(path_name, file_name)
                 with open(os.path.join(file_path_ko_wiki_data, path_name, file_name), 'r', encoding='utf-8') as f:
                     lines = f.readlines()
@@ -114,29 +128,15 @@ def ko_wiki_pre_process(file_path_ko_wiki_data, file_path_preprocessed_data):
                             current_sentences = list(filter(None, current_sentences))
                             if current_sentences:
                                 if previous_line:
-                                    data = previous_line + ' ' + current_sentences[0] + '\n'
-                                    sentence_phoneme = korean_into_phoneme(data.strip())
-                                    if len(sentence_phoneme) <= max_len_sentence:
-                                        i = 0
-                                        for morpheme_phoneme in sentence_phoneme:
-                                            if len(morpheme_phoneme) <= max_len_morpheme:
-                                                i += 1
-                                            else:
-                                                pass
-                                            if len(sentence_phoneme) == i:
-                                                o.write(data)
+                                    if check_appropriate_sentence(previous_line) and \
+                                            check_appropriate_sentence(current_sentences[0]):
+                                        data = previous_line + ' ' + current_sentences[0] + '\n'
+                                        o.write(data)
                                 for i in range(len(current_sentences)-1):
-                                    data = current_sentences[i] + ' ' + current_sentences[i+1] + '\n'
-                                    sentence_phoneme = korean_into_phoneme(data.strip())
-                                    if len(sentence_phoneme) <= max_len_sentence:
-                                        i = 0
-                                        for morpheme_phoneme in sentence_phoneme:
-                                            if len(morpheme_phoneme) <= max_len_morpheme:
-                                                i += 1
-                                            else:
-                                                pass
-                                            if len(sentence_phoneme) == i:
-                                                o.write(data)
+                                    if check_appropriate_sentence(current_sentences[i]) and \
+                                            check_appropriate_sentence(current_sentences[i+1]):
+                                        data = current_sentences[i] + ' ' + current_sentences[i+1] + '\n'
+                                        o.write(data)
                                 previous_line = current_sentences[-1]
                             else:
                                 previous_line = ''
@@ -155,10 +155,21 @@ def morpheme_into_phoneme(korean_word):
 
 
 def korean_into_phoneme(text):
-    phoneme_list = []
-    for morpheme in komoran.morphs(text):
-        phoneme_list.append(morpheme_into_phoneme(morpheme))
-    return phoneme_list
+    phoneme_list = []  # [word_phrase][morpheme][syllable][phoneme]
+    for word_phrase in text.split(' '):
+        morpheme_list = []
+        for morpheme in komoran.morphs(word_phrase):
+            morpheme_list.append(morpheme_into_phoneme(morpheme))
+        phoneme_list.append(morpheme_list)
+
+    phoneme_list_without_word_phrase = []  # [morpheme][syllable][phoneme]
+    for word_phrase in phoneme_list:
+        if word_phrase:
+            word_phrase = [x for x in word_phrase if x != []]
+            word_phrase = [x for x in word_phrase if x != [[]]]
+            phoneme_list_without_word_phrase += word_phrase
+
+    return phoneme_list_without_word_phrase
 
 
 if __name__ == '__main__':

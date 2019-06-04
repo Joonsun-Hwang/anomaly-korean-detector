@@ -3,14 +3,13 @@ import time
 
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
 from torch.utils.data.sampler import SubsetRandomSampler
 import numpy as np
 
 from language import Language
 from dataset import KoreanDataset
 from models import AnomalyKoreanDetector
-from util import clip_gradient, AverageMeter, adjust_learning_rate, get_accuracy
+from util import clip_gradient, save_checkpoint, adjust_learning_rate, get_accuracy
 from preprocess import init_vectors_map
 
 here = os.path.dirname(os.path.abspath(__file__))
@@ -22,7 +21,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # sets de
 
 # Data parameters
 noise = True
-continuous = False
+continuous = True
 if continuous:
     max_len_sentence = 50 * 2
 else:
@@ -38,31 +37,33 @@ sentence_out_size = 1
 random_seed = 0
 validation_split = .2
 shuffle_dataset = True
-syllable_num_layers = 1
+syllable_num_layers = 2
 syllable_layer_type = 'linear'
 attention_num_layer = 2
 attention_type = 'general'
-morpheme_layer_type = 'lstm'
 morpheme_num_layers = 2
-sentence_layer_type = 'lstm'
+morpheme_layer_type = 'lstm'
 sentence_num_layers = 2
-classifier_num_layer = 1
+sentence_layer_type = 'lstm'
+classifier_num_layer = 2
 
 start_epoch = 0
 epochs = 1000
+best_loss = 100
 patience = 20  # maximum number of epochs to wait when min loss is not updated
 waiting = 0  # how many times min loss has not been updated as it follows the epoch.
 weight_decay_percentage = 0.9
 weight_decay_per_epoch = 10  #  decaying the weight if min loss is not updated within 'wait_decay_per_epoch'.
 batch_size = 32
-model_lr = 4e-4  # learning rate for encoder
+model_lr = 1e-4  # learning rate for encoder
 grad_clip = 5.
 print_freq = 100  # print training status every 100 iterations, print validation status every epoch
+# checkpoint = os.path.join(here, 'BEST_checkpoint.pth')  # checkpoint path or none
 checkpoint = None  # checkpoint path or none
 
 
 def main():
-    global checkpoint
+    global checkpoint, waiting, best_loss, start_epoch
     # Vocabulary
     if checkpoint is None:
         init_vectors_map()
@@ -99,20 +100,23 @@ def main():
                                       morpheme_out_size=morpheme_out_size,
                                       sentence_out_size=sentence_out_size,
                                       attention_type=attention_type)
+
+        # Optimizer
+        model_optimizer = torch.optim.Adam(params=filter(lambda p: p.requires_grad, model.parameters()), lr=model_lr)
     else:
         checkpoint = torch.load(checkpoint)
         start_epoch = checkpoint['epoch'] + 1
+        waiting = checkpoint['waiting']
+        model = checkpoint['model']
+        model_optimizer = checkpoint['model_optimizer']
 
     model = model.to(device)
-
-    # Optimizer
-    model_optimizer = torch.optim.Adam(params=filter(lambda p: p.requires_grad, model.parameters()), lr=model_lr)
 
     # Loss function
     criterion_is_noise = nn.BCELoss().to(device)
     criterion_is_next = nn.BCELoss().to(device)
 
-    for epoch in range(epochs):
+    for epoch in range(start_epoch, epochs):
         # Creating data indices for training and validation splits:
         if shuffle_dataset:
             np.random.seed(random_seed)
@@ -138,6 +142,21 @@ def main():
               criterion_is_noise=criterion_is_noise,
               criterion_is_next=criterion_is_next,
               epoch=epoch)
+
+        mean_loss = validate(validation_loader=validation_loader,
+                             model=model,
+                             criterion_is_noise=criterion_is_noise,
+                             criterion_is_next=criterion_is_next)
+
+        is_best = mean_loss > best_loss
+        best_loss = max(mean_loss, best_loss)
+        if not is_best:
+            waiting += 1
+        else:
+            waiting = 0
+
+        # Save checkpoint
+        save_checkpoint(epoch, waiting, model, model_optimizer, mean_loss, is_best)
 
 
 def train(train_loader, model, optimizer, criterion_is_noise, criterion_is_next, epoch):
@@ -200,8 +219,66 @@ def train(train_loader, model, optimizer, criterion_is_noise, criterion_is_next,
             if 'acc_is_next' in locals():
                 trace_training += 'Continuity Accuracy {acc_is_next:.4f} ({acc_is_next_avg:.4f})\t'.format(
                     acc_is_next=acc_is_next, acc_is_next_avg=sum(accs_is_next)/len(accs_is_next))
-
             print(trace_training)
+
+
+def validate(validation_loader, model, criterion_is_noise, criterion_is_next):
+    model.eval()
+
+    losses = []
+    accs_is_noise = []
+    accs_is_next = []
+
+    start = time.time()
+
+    for i, (noise_type, continuity_type, origin_sentence, enc_sentence, mask) in enumerate(validation_loader):
+        # enc_sentence: (batch_size, len_sentence, len_morpheme, len_phoneme)
+        # print(num_morpheme, origin_sentence, enc_sentence.size())
+        enc_sentence = enc_sentence.to(device)
+        mask = mask.to(device)
+        outputs_is_noise, outputs_is_next = model(enc_sentence, mask)
+
+        if noise:
+            noise_type = np.array(noise_type)
+            noise_type[noise_type == 'no'] = 0
+            noise_type[noise_type != '0'] = 1
+            target_is_noise = torch.FloatTensor(noise_type.astype(float)).to(device)
+            ce_is_noise = criterion_is_noise(outputs_is_noise, target_is_noise)
+            acc_is_noise = get_accuracy(outputs_is_noise, target_is_noise)
+            accs_is_noise.append(acc_is_noise)
+
+        if continuous:
+            continuity_type = np.array(continuity_type)
+            continuity_type[continuity_type == 'no'] = 0
+            continuity_type[continuity_type != '0'] = 1
+            target_is_next = torch.FloatTensor(continuity_type.astype(float)).to(device)
+            ce_is_next = criterion_is_next(outputs_is_next, target_is_next)
+            acc_is_next = get_accuracy(outputs_is_next, target_is_next)
+            accs_is_next.append(acc_is_next)
+
+        if 'ce_is_noise' in locals() and 'ce_is_next' in locals():
+            loss = ce_is_noise + ce_is_next
+        elif 'ce_is_noise' in locals():
+            loss = ce_is_noise
+        elif 'ce_is_next' in locals():
+            loss = ce_is_next
+        else:
+            raise ValueError('There is no loss')
+
+        losses.append(loss)
+
+    trace_validation = '\nValidation Loss {loss_avg:.4f}\t'.format(loss_avg=sum(losses)/len(losses))
+    if 'acc_is_noise' in locals():
+        trace_validation += 'Noise Accuracy {acc_is_noise_avg:.4f}\t'.format(
+            acc_is_noise_avg=sum(accs_is_noise)/len(accs_is_noise))
+    if 'acc_is_next' in locals():
+        trace_validation += 'Continuity Accuracy {acc_is_next_avg:.4f}\t'.format(
+            acc_is_next_avg=sum(accs_is_next)/len(accs_is_next))
+    trace_validation += '\n'
+    print(trace_validation)
+
+
+    return sum(losses)/len(losses)
 
 
 if __name__ == '__main__':

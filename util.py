@@ -306,6 +306,20 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 
+def save_checkpoint(epoch, waiting, model, model_optimizer, mean_loss, is_best):
+    state = {'epoch': epoch,
+             'waiting': waiting,
+             'model': model,
+             'model_optimizer': model_optimizer,
+             'mean_loss': mean_loss,
+             'is_best': is_best}
+    filename = 'checkpoint.pth'
+    torch.save(state, filename)
+    # If this checkpoint is the best so far, store a copy so it doesn't get overwritten by a worse checkpoint
+    if is_best:
+        torch.save(state, 'BEST_' + filename)
+
+
 if __name__ == '__main__':
     noise = True
     noise_threshold = np.random.uniform(0, 1, 1)

@@ -107,7 +107,7 @@ class SyllableLayer(nn.Module):
             self.h0 = torch.randn(num_layers, embedding_size, output_size).to(device)
             self.c0 = torch.randn(num_layers, embedding_size, output_size).to(device)
 
-        self.activation = nn.Tanh()
+        self.activation = nn.ReLU()
 
         self.layer_type = layer_type
 
@@ -171,7 +171,7 @@ class MorphemeLayer(nn.Module):
             self.h0 = torch.randn(num_layers, embedding_size, output_size).to(device)
             self.c0 = torch.randn(num_layers, embedding_size, output_size).to(device)
 
-        self.activation = nn.Tanh()
+        self.activation = nn.ReLU()
 
         self.layer_type = layer_type
 
@@ -229,7 +229,7 @@ class SentenceLayer(nn.Module):
             self.h0 = torch.randn(num_layers, embedding_size, output_size).to(device)
             self.c0 = torch.randn(num_layers, embedding_size, output_size).to(device)
 
-        self.activation = nn.Tanh()
+        self.activation = nn.ReLU()
 
         self.layer_type = layer_type
 
@@ -285,6 +285,7 @@ class Classifier(nn.Module):
             i = i + 1
         self.layers_is_next[i] = nn.Linear(in_features=input_size, out_features=output_size).to(device)
 
+        self.dropout = nn.Dropout(p=.5)
         self.activation = nn.Sigmoid()
 
     def forward(self, inputs):
@@ -292,14 +293,14 @@ class Classifier(nn.Module):
 
         inputs_is_noise = inputs
         for layer in self.layers_is_noise.values():
-            outputs_is_noise = layer(inputs_is_noise)
+            outputs_is_noise = layer(self.dropout(inputs_is_noise))
             inputs_is_noise = outputs_is_noise
         outputs_is_noise = inputs_is_noise.squeeze()
         outputs_is_noise = self.activation(outputs_is_noise)
 
         inputs_is_next = inputs
         for layer in self.layers_is_next.values():
-            outputs_is_next = layer(inputs_is_next)
+            outputs_is_next = layer(self.dropout(inputs_is_next))
             inputs_is_next = outputs_is_next
         outputs_is_next = inputs_is_next.squeeze()
         outputs_is_next = self.activation(outputs_is_next)
