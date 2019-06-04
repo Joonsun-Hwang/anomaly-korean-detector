@@ -128,9 +128,7 @@ class SyllableLayer(nn.Module):
             if hasattr(self, 'h0'):
                 outputs, (hn, cn) = layer(inputs, (self.h0, self.c0))
             else:
-                inputs = inputs.view(-1, len_phoneme)
                 outputs = layer(inputs)
-                outputs = outputs.view(-1, embedding_size, len_phoneme)
             inputs = outputs
 
         outputs = inputs.squeeze()

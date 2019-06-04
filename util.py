@@ -1,4 +1,6 @@
 import numpy as np
+import torch
+from torch.autograd import Variable
 
 import hgtk
 from konlpy.tag import Komoran
@@ -8,6 +10,8 @@ from preprocess import get_korean_phonemes_list, get_korean_first_sound_list, ge
 
 split_token = 'ᴥ'
 komoran = Komoran()
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # sets device for model and PyTorch tensors
 
 
 def phoneme_into_korean(phoneme_list):
@@ -260,6 +264,46 @@ def clip_gradient(optimizer, grad_clip):
         for param in group['params']:
             if param.grad is not None:
                 param.grad.data.clamp_(-grad_clip, grad_clip)
+
+
+def adjust_learning_rate(optimizer, shrink_factor):
+    """
+    Shrinks learning rate by a specified factor.
+
+    :param optimizer: optimizer whose learning rate must be shrunk.
+    :param shrink_factor: factor in interval (0, 1) to multiply learning rate with.
+    """
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = param_group['lr'] * shrink_factor
+
+
+def get_accuracy(outputs, targets):
+        t = Variable(torch.Tensor([0.5])).to(device)
+        binary_outputs = (outputs > t).float() * 1
+        correctness = torch.eq(binary_outputs, targets)
+
+        return correctness.sum().item() / correctness.size(0)
+
+
+class AverageMeter(object):
+    """
+    Keeps track of most recent, average, sum, and count of a metric.
+    """
+
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
 
 
 if __name__ == '__main__':

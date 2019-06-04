@@ -1,7 +1,7 @@
 import os
-from glob import glob
 import json
 import numpy as np
+from nltk import tokenize
 
 import hgtk
 from konlpy.tag import Komoran
@@ -25,7 +25,7 @@ special_tokens = ['<phoneme_pad>', '<unk>']
 
 # parameters
 vector_dim = 300
-max_len_sentence = 100 * 2
+max_len_sentence = 50
 max_len_morpheme = 5
 
 # file paths
@@ -110,12 +110,11 @@ def ko_wiki_pre_process(file_path_ko_wiki_data, file_path_preprocessed_data):
                         elif '<doc' in previous_line or '</doc' in current_line or current_line == '':
                             previous_line = ''
                         else:
-                            current_sentences = current_line.strip().split('. ')
+                            current_sentences = tokenize.sent_tokenize(current_line.strip())
                             current_sentences = list(filter(None, current_sentences))
                             if current_sentences:
-                                current_sentences[-1] = current_sentences[-1][:-1]  # 남아있는 . 삭제
                                 if previous_line:
-                                    data = previous_line + '. ' + current_sentences[0] + '.\n'
+                                    data = previous_line + ' ' + current_sentences[0] + '\n'
                                     sentence_phoneme = korean_into_phoneme(data.strip())
                                     if len(sentence_phoneme) <= max_len_sentence:
                                         i = 0
@@ -127,7 +126,7 @@ def ko_wiki_pre_process(file_path_ko_wiki_data, file_path_preprocessed_data):
                                             if len(sentence_phoneme) == i:
                                                 o.write(data)
                                 for i in range(len(current_sentences)-1):
-                                    data = current_sentences[i] + '. ' + current_sentences[i+1] + '.\n'
+                                    data = current_sentences[i] + ' ' + current_sentences[i+1] + '\n'
                                     sentence_phoneme = korean_into_phoneme(data.strip())
                                     if len(sentence_phoneme) <= max_len_sentence:
                                         i = 0

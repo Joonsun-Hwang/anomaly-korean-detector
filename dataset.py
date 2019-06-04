@@ -2,6 +2,7 @@ import torch
 from torch.utils.data import Dataset
 import numpy as np
 import json
+from nltk import tokenize
 
 from util import korean_into_phoneme
 from preprocess import get_korean_phonemes_list
@@ -23,7 +24,8 @@ class KoreanDataset(Dataset):
             lines = f.readlines()
             for line in lines:
                 if line.strip():
-                    self.data.append(line.strip())
+                    if len(tokenize.sent_tokenize(line.strip())) == 2:
+                        self.data.append(line.strip())
 
         with open(file_path_tokens_map, 'r') as f:
             self.token_map = json.loads(f.read())
@@ -32,6 +34,9 @@ class KoreanDataset(Dataset):
         self.max_len_morpheme = max_len_morpheme
         self.noise = noise
         self.continuous = continuous
+
+        if self.continuous:
+            self.max_len_sentence = int(self.max_len_sentence / 2)
 
     def __getitem__(self, i):
         noise_threshold = np.random.uniform(0, 1, 1)
@@ -63,7 +68,9 @@ class KoreanDataset(Dataset):
             continuity_type = 'yes'
 
         origin_sentence = self.data[i]
-        origin_sentence_list = origin_sentence.split('. ')
+        origin_sentence_list = tokenize.sent_tokenize(origin_sentence)
+        if len(origin_sentence_list) != 2:
+            print(len(origin_sentence_list))
 
         enc_sentence_previous, mask_previous = self.make_enc_sentence(origin_sentence=origin_sentence_list[0]+'.', noise_type=noise_type)
         if not self.continuous:
@@ -117,6 +124,7 @@ class KoreanDataset(Dataset):
             enc_sentence.append(enc_morpheme)
 
         enc_sentence = torch.LongTensor(enc_sentence)  # (len_sentence, len_morpheme, len_phoneme)
+        # print(enc_sentence.size())
         mask = torch.FloatTensor(mask)  # (len_sentence, len_morpheme, 1)
 
         return enc_sentence, mask
