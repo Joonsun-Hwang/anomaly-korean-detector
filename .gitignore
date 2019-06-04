@@ -1,6 +1,4 @@
-data/kowiki-20190520-pages-articles.xml
-data/wikiextractor
-data/data.txt
+data/*
 __pycache__
 */__pycache__
 .idea
