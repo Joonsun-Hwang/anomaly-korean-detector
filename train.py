@@ -12,7 +12,7 @@ from util import clip_gradient
 from preprocess import init_vectors_map
 
 here = os.path.dirname(os.path.abspath(__file__))
-file_path_data = os.path.join(here, 'data', 'toy_data.txt')
+file_path_data = os.path.join(here, 'data', 'data.txt')
 file_path_tokens_map = os.path.join(here, 'data', 'tokens_map.json')
 file_path_vectors_map = os.path.join(here, 'data', 'vectors_map.txt')
 
@@ -20,7 +20,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # sets de
 
 # Data parameters
 noise = True
-continuous = False
+continuous = True
 if continuous:
     max_len_sentence = 100 * 2
 else:
@@ -119,7 +119,7 @@ def main():
         validation_loader = torch.utils.data.DataLoader(korean_dataset, batch_size=batch_size, sampler=valid_sampler,
                                                         pin_memory=True, drop_last=True)
 
-        for i, (noise_type, continuity_type, num_morpheme, origin_sentence, enc_sentence, mask) in enumerate(train_loader):
+        for i, (noise_type, continuity_type, origin_sentence, enc_sentence, mask) in enumerate(train_loader):
             # enc_sentence: (batch_size, len_sentence, len_morpheme, len_phoneme)
             # print(num_morpheme, origin_sentence, enc_sentence.size())
             enc_sentence = enc_sentence.to(device)
@@ -156,7 +156,7 @@ def main():
             clip_gradient(model_optimizer, grad_clip)
             model_optimizer.step()
 
-        for i, (noise_type, continuity_type, num_morpheme, origin_sentence, enc_sentence, mask) in enumerate(validation_loader):
+        for i, (noise_type, continuity_type, origin_sentence, enc_sentence, mask) in enumerate(validation_loader):
             pass
 
 

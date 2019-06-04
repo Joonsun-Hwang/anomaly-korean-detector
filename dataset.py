@@ -22,19 +22,8 @@ class KoreanDataset(Dataset):
         with open(file_path_data, 'r', encoding='utf-8') as f:
             lines = f.readlines()
             for line in lines:
-                sentence_phoneme = korean_into_phoneme(line.strip(), noise='no')
-                if len(sentence_phoneme) <= max_len_sentence:
-                    i = 0
-                    for morpheme_phoneme in sentence_phoneme:
-                        if len(morpheme_phoneme) <= max_len_morpheme:
-                            i += 1
-                        else:
-                            pass
-                        if len(sentence_phoneme) == i:
-                            self.data.append(line.strip())
-
-        self.where_continuous = []  # 연속적인 문장 체크, none: 연속 문장 없음, next: 다음 문장과 연속, previous: 이전 문장과 연속
-        # TODO: 다음 문장과 연속인지 체크, 안되면 이전 문장과 연속인지 체크, 아무것도 없다면 연속 문장 없음으로 체크
+                if line.strip():
+                    self.data.append(line.strip())
 
         with open(file_path_tokens_map, 'r') as f:
             self.token_map = json.loads(f.read())
@@ -68,26 +57,43 @@ class KoreanDataset(Dataset):
             noise_type = 'no'
 
         continuity_threshold = np.random.uniform(0, 1, 1)
-        if not self.continuous:
-            continuity_threshold = 0
         if continuity_threshold < 0.5:
             continuity_type = 'no'
         else:
             continuity_type = 'yes'
-        # TODO: continuity_type 에 따라 연속 문장 반환
 
         origin_sentence = self.data[i]
+        origin_sentence_list = origin_sentence.split('. ')
+
+        enc_sentence_previous, mask_previous = self.make_enc_sentence(origin_sentence=origin_sentence_list[0]+'.', noise_type=noise_type)
+        if not self.continuous:
+            return noise_type, continuity_type, origin_sentence, enc_sentence_previous, mask_previous
+
+        if continuity_type == 'yes':
+            enc_sentence_next, mask_next = self.make_enc_sentence(origin_sentence=origin_sentence_list[1]+'.', noise_type=noise_type)
+        else:
+            rand_idx = np.random.randint(self.__len__())
+            origin_sentence = self.data[rand_idx]
+            origin_sentence_list = origin_sentence.split('. ')
+            enc_sentence_next, mask_next = self.make_enc_sentence(origin_sentence=origin_sentence_list[1]+'.', noise_type=noise_type)
+
+        enc_sentence = torch.cat((enc_sentence_previous, enc_sentence_next), dim=0)
+        mask = torch.cat((mask_previous, mask_next), dim=0)
+
+        return noise_type, continuity_type, origin_sentence, enc_sentence, mask
+
+    def make_enc_sentence(self, origin_sentence, noise_type):
         sentence_phoneme = korean_into_phoneme(text=origin_sentence, noise=noise_type)
         num_morpheme = len(sentence_phoneme)
         mask = [[[1]]] * num_morpheme  # 의미 있는 부분: 1, padding 부분: 0
 
-        padded_sentence_phoneme = sentence_phoneme + [[[]]] * (self.max_len_sentence-num_morpheme)
-        mask += [[[0]]] * (self.max_len_sentence-num_morpheme)
+        padded_sentence_phoneme = sentence_phoneme + [[[]]] * (self.max_len_sentence - num_morpheme)
+        mask += [[[0]]] * (self.max_len_sentence - num_morpheme)
         enc_sentence = []
         for idx, (morpheme_phoneme, morpheme_mask) in enumerate(zip(padded_sentence_phoneme, mask)):
-            padded_morpheme_phoneme = morpheme_phoneme + [[]] * (self.max_len_morpheme-len(morpheme_phoneme))
+            padded_morpheme_phoneme = morpheme_phoneme + [[]] * (self.max_len_morpheme - len(morpheme_phoneme))
             if mask[idx] == [[1]]:
-                mask[idx] = [[1]] * len(morpheme_phoneme) + [[0]] * (self.max_len_morpheme-len(morpheme_phoneme))
+                mask[idx] = [[1]] * len(morpheme_phoneme) + [[0]] * (self.max_len_morpheme - len(morpheme_phoneme))
             else:
                 mask[idx] = [[0]] * self.max_len_morpheme
             enc_morpheme = []
@@ -99,7 +105,8 @@ class KoreanDataset(Dataset):
                                    [self.token_map['<empty_last_sound>']]
                 elif len(phonemes) == 1:
                     if phonemes[0] in get_korean_phonemes_list():  # 형태소 단위 음소가 한글일 경우, 그 앞 형태소의 받침. 따라서 종성으로 처리
-                        enc_phonemes = [self.token_map['<empty_first_sound>']] + [self.token_map['<empty_middle_sound>']] + \
+                        enc_phonemes = [self.token_map['<empty_first_sound>']] + [
+                            self.token_map['<empty_middle_sound>']] + \
                                        [self.token_map.get(phoneme, self.token_map['<unk>']) for phoneme in phonemes]
                     else:  # 한글이 아닐 경우, 초성으로 처리
                         enc_phonemes = [self.token_map.get(phoneme, self.token_map['<unk>']) for phoneme in phonemes] + \
@@ -112,7 +119,7 @@ class KoreanDataset(Dataset):
         enc_sentence = torch.LongTensor(enc_sentence)  # (len_sentence, len_morpheme, len_phoneme)
         mask = torch.FloatTensor(mask)  # (len_sentence, len_morpheme, 1)
 
-        return noise_type, continuity_type, num_morpheme, origin_sentence, enc_sentence, mask
+        return enc_sentence, mask
 
     def __len__(self):
         return len(self.data)

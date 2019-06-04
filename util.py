@@ -1,4 +1,5 @@
 import numpy as np
+
 import hgtk
 from konlpy.tag import Komoran
 
@@ -285,6 +286,6 @@ if __name__ == '__main__':
     else:
         noise_type = 'no'
 
-    noise_type = 'replacing_phoneme'
+    noise_type = 'no'
     print(noise_type)
-    korean_into_phoneme('커피를 마시는 중 입니다.', noise_type)
+    print(korean_into_phoneme('abcd', noise_type))
