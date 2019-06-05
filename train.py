@@ -41,11 +41,11 @@ syllable_num_layers = 2
 syllable_layer_type = 'linear'
 attention_num_layer = 2
 attention_type = 'general'
-morpheme_num_layers = 2
+morpheme_num_layers = 3
 morpheme_layer_type = 'lstm'
-sentence_num_layers = 2
+sentence_num_layers = 3
 sentence_layer_type = 'lstm'
-classifier_num_layer = 2
+classifier_num_layer = 1
 
 start_epoch = 0
 epochs = 1000
@@ -54,8 +54,8 @@ patience = 20  # maximum number of epochs to wait when min loss is not updated
 waiting = 0  # how many times min loss has not been updated as it follows the epoch.
 weight_decay_percentage = 0.9
 weight_decay_per_epoch = 10  #  decaying the weight if min loss is not updated within 'wait_decay_per_epoch'.
-batch_size = 32
-model_lr = 1e-4  # learning rate for encoder
+batch_size = 16
+model_lr = 1e-3  # learning rate for encoder
 grad_clip = 5.
 print_freq = 100  # print training status every 100 iterations, print validation status every epoch
 # checkpoint = os.path.join(here, 'BEST_checkpoint.pth')  # checkpoint path or none
@@ -202,10 +202,12 @@ def train(train_loader, model, optimizer, criterion_is_noise, criterion_is_next,
         else:
             raise ValueError('There is no loss')
 
+        a = list(model.parameters())[0].clone()
         optimizer.zero_grad()
         loss.backward()
         clip_gradient(optimizer, grad_clip)
         optimizer.step()
+        b = list(model.parameters())[0].clone()
 
         losses.append(loss)
 
@@ -219,7 +221,8 @@ def train(train_loader, model, optimizer, criterion_is_noise, criterion_is_next,
             if 'acc_is_next' in locals():
                 trace_training += 'Continuity Accuracy {acc_is_next:.4f} ({acc_is_next_avg:.4f})\t'.format(
                     acc_is_next=acc_is_next, acc_is_next_avg=sum(accs_is_next)/len(accs_is_next))
-            print(trace_training)
+            # TODO: 값 추정하기
+            print(trace_training, torch.equal(a.data, b.data))
 
 
 def validate(validation_loader, model, criterion_is_noise, criterion_is_next):
