@@ -21,7 +21,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # sets de
 
 # Data parameters
 noise = True
-continuous = True
+continuous = False
 if continuous:
     max_len_sentence = 50 * 2
 else:
@@ -39,9 +39,9 @@ validation_split = .2
 shuffle_dataset = True
 syllable_num_layers = 2
 syllable_layer_type = 'linear'
-attention_num_layer = 2
+attention_num_layer = 1
 attention_type = 'general'
-morpheme_num_layers = 3
+morpheme_num_layers = 2
 morpheme_layer_type = 'lstm'
 sentence_num_layers = 3
 sentence_layer_type = 'lstm'
@@ -53,9 +53,9 @@ best_loss = 100
 patience = 20  # maximum number of epochs to wait when min loss is not updated
 waiting = 0  # how many times min loss has not been updated as it follows the epoch.
 weight_decay_percentage = 0.9
-weight_decay_per_epoch = 10  #  decaying the weight if min loss is not updated within 'wait_decay_per_epoch'.
-batch_size = 16
-model_lr = 1e-3  # learning rate for encoder
+weight_decay_per_epoch = 10  # decaying the weight if min loss is not updated within 'wait_decay_per_epoch'.
+batch_size = 32
+model_lr = 4e-2  # learning rate for encoder
 grad_clip = 5.
 print_freq = 100  # print training status every 100 iterations, print validation status every epoch
 # checkpoint = os.path.join(here, 'BEST_checkpoint.pth')  # checkpoint path or none
@@ -173,7 +173,7 @@ def train(train_loader, model, optimizer, criterion_is_noise, criterion_is_next,
         # print(num_morpheme, origin_sentence, enc_sentence.size())
         enc_sentence = enc_sentence.to(device)
         mask = mask.to(device)
-        outputs_is_noise, outputs_is_next = model(enc_sentence, mask)
+        outputs_is_noise, outputs_is_next = model(enc_sentence, mask, i)
 
         if noise:
             noise_type = np.array(noise_type)

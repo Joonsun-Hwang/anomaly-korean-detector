@@ -19,7 +19,7 @@ class AttentionLayer(nn.Module):
             self.linear_in_morpheme = nn.Linear(len_morpheme, len_morpheme, bias=False)
         self.linear_out_morpheme = nn.Linear(len_morpheme*2, len_morpheme, bias=False)
         self.softmax = nn.Softmax(dim=-1)
-        self.activation = nn.Tanh()
+        self.activation = nn.ReLU()
 
     def forward(self, inputs, mask, iter_layer):  # self-attention
         # inputs: (batch_size, len_sentence, len_morpheme, embedding_size)
@@ -133,7 +133,7 @@ class SyllableLayer(nn.Module):
 
         outputs = inputs.squeeze()
         outputs = outputs.view(batch_size, len_sentence, len_morpheme, embedding_size)
-        outputs = self.activation(outputs)
+        # outputs = self.activation(outputs)
 
         return outputs  # (batch_size, len_sentence, len_morpheme, embedding_size)
 
@@ -171,7 +171,7 @@ class MorphemeLayer(nn.Module):
             self.h0 = torch.randn(num_layers, embedding_size, output_size).to(device)
             self.c0 = torch.randn(num_layers, embedding_size, output_size).to(device)
 
-        self.activation = nn.ReLU()
+        self.activation = nn.LeakyReLU()
 
         self.layer_type = layer_type
 
@@ -192,12 +192,15 @@ class MorphemeLayer(nn.Module):
             else:
                 inputs = inputs.view(-1, len_morpheme)
                 outputs = layer(inputs)
+                try:
+                    outputs = self.activation(outputs+inputs)
+                except:
+                    outputs = self.activation(outputs)
                 outputs = outputs.view(-1, embedding_size, len_morpheme)
             inputs = outputs
 
         outputs = inputs.squeeze()
         outputs = outputs.view(batch_size, len_sentence, embedding_size)
-        outputs = self.activation(outputs)
 
         return outputs
 
@@ -229,13 +232,13 @@ class SentenceLayer(nn.Module):
             self.h0 = torch.randn(num_layers, embedding_size, output_size).to(device)
             self.c0 = torch.randn(num_layers, embedding_size, output_size).to(device)
 
-        self.activation = nn.ReLU()
+        self.activation = nn.LeakyReLU()
 
         self.layer_type = layer_type
 
     def forward(self, inputs):
         # inputs: (batch_size, len_sentence, embedding_size)
-        inputs = inputs.transpose(1, 2).contiguous()  # (batch_size, len_sentence, embedding_size, len_morpheme)
+        inputs = inputs.transpose(1, 2).contiguous()  # (batch_size, embedding_size, len_sentence)
 
         batch_size = inputs.size(0)
         embedding_size = inputs.size(1)
@@ -249,12 +252,15 @@ class SentenceLayer(nn.Module):
             else:
                 inputs = inputs.view(-1, len_sentence)
                 outputs = layer(inputs)
+                try:
+                    outputs = self.activation(outputs+inputs)
+                except:
+                    outputs = self.activation(outputs)
                 outputs = outputs.view(-1, embedding_size, len_sentence)
             inputs = outputs
 
         outputs = inputs.squeeze()
         outputs = outputs.view(batch_size, embedding_size)
-        outputs = self.activation(outputs)
 
         return outputs
 

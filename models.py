@@ -30,7 +30,7 @@ class AnomalyKoreanDetector(nn.Module):
 
         self.attention_num_layer = attention_num_layer
 
-    def forward(self, inputs, mask):
+    def forward(self, inputs, mask, i):
         outputs = self.syllable_layer(inputs)  # (batch_size, len_sentence, len_morpheme, embedding_size)
         for iter_layer in range(self.attention_num_layer):
             outputs = self.attention_layer(outputs, mask, iter_layer)  # (batch_size, len_sentence, len_morpheme, embedding_size)
