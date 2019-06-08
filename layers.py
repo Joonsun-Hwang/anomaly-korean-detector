@@ -2,11 +2,13 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
+import math
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # sets device for model and PyTorch tensors
 
 
 class AttentionLayer(nn.Module):
-    def __init__(self, embedding_size, len_morpheme, attention_type='general'):
+    def __init__(self, embedding_size, len_morpheme, num_layers, attention_type='general'):
         super(AttentionLayer, self).__init__()
 
         if attention_type not in ['dot', 'general']:
@@ -14,10 +16,18 @@ class AttentionLayer(nn.Module):
         else:
             self.attention_type = attention_type
 
+        self.linear_in_syllable = {}
+        self.linear_in_morpheme = {}
+        self.linear_out_morpheme = {}
+
         if self.attention_type == 'general':
-            self.linear_in_syllable = nn.Linear(embedding_size, embedding_size, bias=False)
-            self.linear_in_morpheme = nn.Linear(len_morpheme, len_morpheme, bias=False)
-        self.linear_out_morpheme = nn.Linear(len_morpheme*2, len_morpheme, bias=False)
+            for n in range(num_layers):
+                self.linear_in_syllable[n] = nn.Linear(in_features=embedding_size, out_features=embedding_size, bias=False).to(device)
+                self.linear_in_morpheme[n] = nn.Linear(in_features=len_morpheme, out_features=len_morpheme, bias=False).to(device)
+
+        for n in range(num_layers):
+            self.linear_out_morpheme[n] = nn.Linear(in_features=len_morpheme*2, out_features=len_morpheme, bias=False).to(device)
+
         self.softmax = nn.Softmax(dim=-1)
         self.activation = nn.ReLU()
 
@@ -43,13 +53,13 @@ class AttentionLayer(nn.Module):
         if self.attention_type == 'general':
             inputs_morpheme = inputs_morpheme.view(-1, embedding_size)
             inputs_sentence = inputs_sentence.view(-1, len_morpheme)
-            inputs_morpheme = self.linear_in_syllable(inputs_morpheme)
-            inputs_sentence = self.linear_in_morpheme(inputs_sentence)
+            inputs_morpheme = self.linear_in_syllable[iter_layer](inputs_morpheme)
+            inputs_sentence = self.linear_in_morpheme[iter_layer](inputs_sentence)
             inputs_morpheme = inputs_morpheme.view(-1, len_morpheme, embedding_size)
             inputs_sentence = inputs_sentence.view(-1, len_sentence, len_morpheme)
 
-        attention_scores_morpheme = torch.bmm(inputs_morpheme, inputs_morpheme.transpose(1, 2).contiguous())  # (batch_size*len_sentence, len_morpheme, len_morpheme)
-        attention_scores_sentence = torch.bmm(inputs_sentence, inputs_sentence.transpose(1, 2).contiguous())  # (batch_size*embedding_size, len_sentence, len_sentence)
+        attention_scores_morpheme = torch.bmm(inputs_morpheme, inputs_morpheme.transpose(1, 2).contiguous()) / math.sqrt(inputs_morpheme.size(-1))  # (batch_size*len_sentence, len_morpheme, len_morpheme)
+        attention_scores_sentence = torch.bmm(inputs_sentence, inputs_sentence.transpose(1, 2).contiguous()) / math.sqrt(inputs_morpheme.size(-1))  # (batch_size*embedding_size, len_sentence, len_sentence)
         attention_scores_morpheme = Variable(attention_scores_morpheme.view(-1, len_morpheme))  # avoid inplace operation
         attention_scores_sentence = Variable(attention_scores_sentence.view(-1, len_sentence))
         if iter_layer == 0:
@@ -78,8 +88,8 @@ class AttentionLayer(nn.Module):
         combined = torch.cat((mix, inputs_sentence), dim=2)  # (batch_size*len_sentence, len_sentence, len_morpheme*2)
         combined = combined.view(-1, len_morpheme*2)
 
-        outputs = self.linear_out_morpheme(combined).view(batch_size, len_sentence, len_morpheme, embedding_size)
-        outputs = self.activation(outputs)
+        outputs = self.linear_out_morpheme[iter_layer](combined).view(batch_size, len_sentence, len_morpheme, embedding_size)
+        outputs = self.activation(outputs + inputs)
 
         return outputs
 

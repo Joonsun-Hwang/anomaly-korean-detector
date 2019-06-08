@@ -19,6 +19,7 @@ class AnomalyKoreanDetector(nn.Module):
                                             input_size=phoneme_in_size, output_size=phoneme_out_size)
         self.attention_layer = AttentionLayer(embedding_size=embedding_size,
                                               len_morpheme=len_morpheme,
+                                              num_layers=attention_num_layer,
                                               attention_type=attention_type)
         self.morpheme_layer = MorphemeLayer(layer_type=morpheme_layer_type, num_layers=morpheme_num_layers,
                                             input_size=len_morpheme, embedding_size=embedding_size,
@@ -36,6 +37,8 @@ class AnomalyKoreanDetector(nn.Module):
             outputs = self.attention_layer(outputs, mask, iter_layer)  # (batch_size, len_sentence, len_morpheme, embedding_size)
         outputs = self.morpheme_layer(outputs)  # (batch_size, len_sentence, embedding_size)
         outputs = self.sentence_layer(outputs)  # (batch_size, embedding_size)
+        # if i % 100 == 0:
+        #     print(outputs)
         outputs_is_noise, outputs_is_next = self.classifier(outputs)
 
         return outputs_is_noise, outputs_is_next

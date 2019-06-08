@@ -38,7 +38,7 @@ file_path_preprocessed_data = os.path.join(here, 'data', 'data.txt')
 
 
 def normalized_random_vector(dim=300):
-    vector = np.random.normal(0, 1, dim)
+    vector = np.random.normal(0, 0.1, dim)
     norm_vector = vector / np.linalg.norm(vector)
     return ' '.join(str(e) for e in norm_vector)
 
