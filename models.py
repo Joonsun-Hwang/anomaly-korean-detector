@@ -31,14 +31,12 @@ class AnomalyKoreanDetector(nn.Module):
 
         self.attention_num_layer = attention_num_layer
 
-    def forward(self, inputs, mask, i):
+    def forward(self, inputs, mask):
         outputs = self.syllable_layer(inputs)  # (batch_size, len_sentence, len_morpheme, embedding_size)
         for iter_layer in range(self.attention_num_layer):
             outputs = self.attention_layer(outputs, mask, iter_layer)  # (batch_size, len_sentence, len_morpheme, embedding_size)
         outputs = self.morpheme_layer(outputs)  # (batch_size, len_sentence, embedding_size)
         outputs = self.sentence_layer(outputs)  # (batch_size, embedding_size)
-        # if i % 100 == 0:
-        #     print(outputs)
         outputs_is_noise, outputs_is_next = self.classifier(outputs)
 
         return outputs_is_noise, outputs_is_next

@@ -37,13 +37,13 @@ sentence_out_size = 1
 random_seed = 0
 validation_split = .2
 shuffle_dataset = True
-syllable_num_layers = 2
+syllable_num_layers = 1
 syllable_layer_type = 'linear'
-attention_num_layer = 5
+attention_num_layer = 1
 attention_type = 'general'
-morpheme_num_layers = 2
+morpheme_num_layers = 1
 morpheme_layer_type = 'lstm'
-sentence_num_layers = 3
+sentence_num_layers = 1
 sentence_layer_type = 'lstm'
 classifier_num_layer = 1
 
@@ -54,8 +54,8 @@ patience = 10  # maximum number of epochs to wait when min loss is not updated
 waiting = 0  # how many times min loss has not been updated as it follows the epoch.
 weight_decay_percentage = 0.9
 weight_decay_per_epoch = 5  # decaying the weight if min loss is not updated within 'wait_decay_per_epoch'.
-batch_size = 32
-model_lr = 4e-3  # learning rate for encoder
+batch_size = 8
+model_lr = 4e-2  # learning rate for encoder
 grad_clip = 5.
 print_freq = 100  # print training status every 100 iterations, print validation status every epoch
 # checkpoint = os.path.join(here, 'BEST_checkpoint.pth')  # checkpoint path or none
@@ -143,13 +143,14 @@ def main():
               criterion_is_next=criterion_is_next,
               epoch=epoch)
 
-        mean_loss = validate(validation_loader=validation_loader,
-                             model=model,
-                             criterion_is_noise=criterion_is_noise,
-                             criterion_is_next=criterion_is_next)
+        with torch.no_grad():
+            mean_loss = validate(validation_loader=validation_loader,
+                                 model=model,
+                                 criterion_is_noise=criterion_is_noise,
+                                 criterion_is_next=criterion_is_next)
 
-        is_best = mean_loss > best_loss
-        best_loss = max(mean_loss, best_loss)
+        is_best = mean_loss < best_loss
+        best_loss = min(mean_loss, best_loss)
         if not is_best:
             waiting += 1
         else:
@@ -173,7 +174,7 @@ def train(train_loader, model, optimizer, criterion_is_noise, criterion_is_next,
         # print(num_morpheme, origin_sentence, enc_sentence.size())
         enc_sentence = enc_sentence.to(device)
         mask = mask.to(device)
-        outputs_is_noise, outputs_is_next = model(enc_sentence, mask, i)
+        outputs_is_noise, outputs_is_next = model(enc_sentence, mask)
 
         if noise:
             noise_type = np.array(noise_type)
@@ -222,7 +223,7 @@ def train(train_loader, model, optimizer, criterion_is_noise, criterion_is_next,
                 trace_training += 'Continuity Accuracy {acc_is_next:.4f} ({acc_is_next_avg:.4f})\t'.format(
                     acc_is_next=acc_is_next, acc_is_next_avg=sum(accs_is_next)/len(accs_is_next))
             # TODO: 값 추정하기
-            print(trace_training, torch.equal(a.data, b.data))
+            print(trace_training)
 
 
 def validate(validation_loader, model, criterion_is_noise, criterion_is_next):
