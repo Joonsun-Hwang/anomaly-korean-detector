@@ -1,4 +1,6 @@
+import os
 import numpy as np
+from datetime import datetime
 import torch
 from torch.autograd import Variable
 
@@ -313,11 +315,13 @@ def save_checkpoint(epoch, waiting, model, model_optimizer, mean_loss, is_best):
              'model_optimizer': model_optimizer,
              'mean_loss': mean_loss,
              'is_best': is_best}
-    filename = 'checkpoint.pth'
-    torch.save(state, filename)
+    here = os.path.dirname(os.path.abspath(__file__))
+    now = datetime.now().strftime("%Y%m%d%H%M%S")
+    filepath = os.path.join(here, now, 'checkpoint.pth')
+    torch.save(state, filepath)
     # If this checkpoint is the best so far, store a copy so it doesn't get overwritten by a worse checkpoint
     if is_best:
-        torch.save(state, 'BEST_' + filename)
+        torch.save(state, 'BEST_' + filepath)
 
 
 if __name__ == '__main__':
