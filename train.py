@@ -1,5 +1,6 @@
 import os
 import time
+from datetime import datetime
 
 import torch
 import torch.nn as nn
@@ -16,6 +17,8 @@ here = os.path.dirname(os.path.abspath(__file__))
 file_path_data = os.path.join(here, 'data', 'data.txt')
 file_path_tokens_map = os.path.join(here, 'data', 'tokens_map.json')
 file_path_vectors_map = os.path.join(here, 'data', 'vectors_map.txt')
+
+now = datetime.now().strftime("%Y%m%d%H%M%S")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # sets device for model and PyTorch tensors
 
@@ -157,7 +160,8 @@ def main():
             waiting = 0
 
         # Save checkpoint
-        save_checkpoint(epoch, waiting, model, model_optimizer, mean_loss, is_best)
+        filepath = os.path.join(here, now, 'checkpoint.pth')
+        save_checkpoint(filepath, epoch, waiting, model, model_optimizer, mean_loss, is_best)
 
 
 def train(train_loader, model, optimizer, criterion_is_noise, criterion_is_next, epoch):
