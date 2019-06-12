@@ -14,7 +14,7 @@ from util import clip_gradient, save_checkpoint, adjust_learning_rate, get_accur
 from preprocess import init_vectors_map
 
 here = os.path.dirname(os.path.abspath(__file__))
-file_path_data = os.path.join(here, 'data', 'data.txt')
+file_path_data = os.path.join(here, 'data', 'train.txt')
 file_path_tokens_map = os.path.join(here, 'data', 'tokens_map.json')
 file_path_vectors_map = os.path.join(here, 'data', 'vectors_map.txt')
 
@@ -43,11 +43,11 @@ validation_split = .2
 shuffle_dataset = True
 syllable_num_layers = 2
 syllable_layer_type = 'linear'
-attention_num_layer = 5
+attention_num_layer = 2
 attention_type = 'general'
 morpheme_num_layers = 2
 morpheme_layer_type = 'lstm'
-sentence_num_layers = 3
+sentence_num_layers = 2
 sentence_layer_type = 'lstm'
 classifier_num_layer = 2
 
@@ -58,7 +58,7 @@ patience = 10  # maximum number of epochs to wait when min loss is not updated
 waiting = 0  # how many times min loss has not been updated as it follows the epoch.
 weight_decay_percentage = 0.9
 weight_decay_per_epoch = 5  # decaying the weight if min loss is not updated within 'wait_decay_per_epoch'.
-batch_size = 128
+batch_size = 32
 model_lr = 4e-4  # learning rate for encoder
 grad_clip = 5.
 print_freq = 100  # print training status every 100 iterations, print validation status every epoch

@@ -104,6 +104,7 @@ class SyllableLayer(nn.Module):
 
         self.embedding = nn.Embedding(vocab_size, embedding_size)
         self.set_embedding_param(language.get_vectors())  # init embedding weight
+        self.input_size = input_size
 
         self.layers = {}
         if layer_type == 'linear':
@@ -133,22 +134,19 @@ class SyllableLayer(nn.Module):
         len_phoneme = inputs.size(4)
 
         inputs = inputs.view(-1, embedding_size, len_phoneme)
-
         for layer in self.layers.values():
             if hasattr(self, 'h0'):
                 outputs, (hn, cn) = layer(inputs, (self.h0, self.c0))
                 self.activation(outputs)
             else:
                 outputs = layer(inputs)
-                try:
+                if outputs.size(-1) == self.input_size:
                     outputs = self.activation(outputs+inputs)
-                except:
+                    outputs = outputs.view(-1, embedding_size, len_phoneme)
+                else:
                     outputs = self.activation(outputs)
-                outputs = outputs.view(-1, embedding_size, len_morpheme)
             inputs = outputs
-
-        outputs = inputs.squeeze()
-        outputs = outputs.view(batch_size, len_sentence, len_morpheme, embedding_size)
+        outputs = inputs.view(batch_size, len_sentence, len_morpheme, embedding_size, 1).squeeze()
 
         return outputs  # (batch_size, len_sentence, len_morpheme, embedding_size)
 
@@ -174,6 +172,7 @@ class MorphemeLayer(nn.Module):
         if layer_type not in ['linear', 'lstm']:
             raise ValueError('Invalid morpheme layer type selected.')
 
+        self.input_size = input_size
         self.layers = {}
         if layer_type == 'linear':
             i = 0
@@ -208,15 +207,13 @@ class MorphemeLayer(nn.Module):
             else:
                 inputs = inputs.view(-1, len_morpheme)
                 outputs = layer(inputs)
-                try:
+                if outputs.size(-1) == self.input_size:
                     outputs = self.activation(outputs+inputs)
-                except:
+                    outputs = outputs.view(-1, embedding_size, len_morpheme)
+                else:
                     outputs = self.activation(outputs)
-                outputs = outputs.view(-1, embedding_size, len_morpheme)
             inputs = outputs
-
-        outputs = inputs.squeeze()
-        outputs = outputs.view(batch_size, len_sentence, embedding_size)
+        outputs = inputs.view(batch_size, len_sentence, embedding_size, 1).squeeze()
 
         return outputs
 
@@ -236,6 +233,7 @@ class SentenceLayer(nn.Module):
         if layer_type not in ['linear', 'lstm']:
             raise ValueError('Invalid morpheme layer type selected.')
 
+        self.input_size = input_size
         self.layers = {}
         if layer_type == 'linear':
             i = 0
@@ -265,19 +263,17 @@ class SentenceLayer(nn.Module):
         for layer in self.layers.values():
             if hasattr(self, 'h0'):
                 outputs, (hn, cn) = layer(inputs, (self.h0, self.c0))
-                outputs = self.activate(outputs)
+                outputs = self.activation(outputs)
             else:
                 inputs = inputs.view(-1, len_sentence)
                 outputs = layer(inputs)
-                try:
+                if outputs.size(-1) == self.input_size:
                     outputs = self.activation(outputs+inputs)
-                except:
+                    outputs = outputs.view(-1, embedding_size, len_sentence)
+                else:
                     outputs = self.activation(outputs)
-                outputs = outputs.view(-1, embedding_size, len_sentence)
             inputs = outputs
-
-        outputs = inputs.squeeze()
-        outputs = outputs.view(batch_size, embedding_size)
+        outputs = inputs.view(batch_size, embedding_size, 1).squeeze()
 
         return outputs
 
@@ -294,6 +290,7 @@ class Classifier(nn.Module):
                  input_size=300, output_size=1):
         super(Classifier, self).__init__()
 
+        self.input_size = input_size
         self.layers_is_noise = {}
         i = 0
         for n in range(num_layers-1):
@@ -319,9 +316,9 @@ class Classifier(nn.Module):
         inputs_is_noise = inputs
         for layer in self.layers_is_noise.values():
             outputs_is_noise = layer(self.dropout(inputs_is_noise))
-            try:
+            if outputs_is_noise.size(-1) == self.input_size:
                 outputs_is_noise = self.activation(outputs_is_noise+inputs)
-            except:
+            else:
                 outputs_is_noise = self.activation(outputs_is_noise)
             inputs_is_noise = outputs_is_noise
         outputs_is_noise = inputs_is_noise.squeeze()
@@ -330,13 +327,12 @@ class Classifier(nn.Module):
         inputs_is_next = inputs
         for layer in self.layers_is_next.values():
             outputs_is_next = layer(self.dropout(inputs_is_next))
-            try:
-                outputs_is_next = self.activation(outputs_is_next+intputs)
-            except:
+            if outputs_is_next.size(-1) == self.input_size:
+                outputs_is_next = self.activation(outputs_is_next+inputs)
+            else:
                 outputs_is_next = self.activation(outputs_is_next)
             inputs_is_next = outputs_is_next
         outputs_is_next = inputs_is_next.squeeze()
         outputs_is_next = self.sigmoid(outputs_is_next)
 
         return outputs_is_noise, outputs_is_next
-
