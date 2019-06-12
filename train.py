@@ -59,7 +59,7 @@ waiting = 0  # how many times min loss has not been updated as it follows the ep
 weight_decay_percentage = 0.9
 weight_decay_per_epoch = 5  # decaying the weight if min loss is not updated within 'wait_decay_per_epoch'.
 batch_size = 32
-model_lr = 4e-4  # learning rate for encoder
+model_lr = 4e-2  # learning rate for encoder
 grad_clip = 5.
 print_freq = 100  # print training status every 100 iterations, print validation status every epoch
 # checkpoint = os.path.join(here, 'BEST_checkpoint.pth')  # checkpoint path or none
@@ -228,7 +228,7 @@ def train(train_loader, model, optimizer, criterion_is_noise, criterion_is_next,
                 trace_training += 'Continuity Accuracy {acc_is_next:.4f} ({acc_is_next_avg:.4f})\t'.format(
                     acc_is_next=acc_is_next, acc_is_next_avg=sum(accs_is_next)/len(accs_is_next))
             # TODO: 값 추정하기
-            print(trace_training)
+            print(trace_training, torch.equal(a.data, b.data))
 
 
 def validate(validation_loader, model, criterion_is_noise, criterion_is_next):
