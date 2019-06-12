@@ -29,7 +29,7 @@ class AttentionLayer(nn.Module):
             self.linear_out_morpheme[n] = nn.Linear(in_features=len_morpheme*2, out_features=len_morpheme, bias=False).to(device)
 
         self.softmax = nn.Softmax(dim=-1)
-        self.activation = nn.ReLU()
+        self.activation = nn.Tanh()
 
     def forward(self, inputs, mask, iter_layer):  # self-attention
         # inputs: (batch_size, len_sentence, len_morpheme, embedding_size)
@@ -137,13 +137,18 @@ class SyllableLayer(nn.Module):
         for layer in self.layers.values():
             if hasattr(self, 'h0'):
                 outputs, (hn, cn) = layer(inputs, (self.h0, self.c0))
+                self.activation(outputs)
             else:
                 outputs = layer(inputs)
+                try:
+                    outputs = self.activation(outputs+inputs)
+                except:
+                    outputs = self.activation(outputs)
+                outputs = outputs.view(-1, embedding_size, len_morpheme)
             inputs = outputs
 
         outputs = inputs.squeeze()
         outputs = outputs.view(batch_size, len_sentence, len_morpheme, embedding_size)
-        # outputs = self.activation(outputs)
 
         return outputs  # (batch_size, len_sentence, len_morpheme, embedding_size)
 
@@ -181,7 +186,7 @@ class MorphemeLayer(nn.Module):
             self.h0 = torch.randn(num_layers, embedding_size, output_size).to(device)
             self.c0 = torch.randn(num_layers, embedding_size, output_size).to(device)
 
-        self.activation = nn.LeakyReLU()
+        self.activation = nn.ReLU()
 
         self.layer_type = layer_type
 
@@ -199,6 +204,7 @@ class MorphemeLayer(nn.Module):
         for layer in self.layers.values():
             if hasattr(self, 'h0'):
                 outputs, (hn, cn) = layer(inputs, (self.h0, self.c0))
+                self.activation(outputs)
             else:
                 inputs = inputs.view(-1, len_morpheme)
                 outputs = layer(inputs)
@@ -242,7 +248,7 @@ class SentenceLayer(nn.Module):
             self.h0 = torch.randn(num_layers, embedding_size, output_size).to(device)
             self.c0 = torch.randn(num_layers, embedding_size, output_size).to(device)
 
-        self.activation = nn.LeakyReLU()
+        self.activation = nn.ReLU()
 
         self.layer_type = layer_type
 
@@ -259,6 +265,7 @@ class SentenceLayer(nn.Module):
         for layer in self.layers.values():
             if hasattr(self, 'h0'):
                 outputs, (hn, cn) = layer(inputs, (self.h0, self.c0))
+                outputs = self.activate(outputs)
             else:
                 inputs = inputs.view(-1, len_sentence)
                 outputs = layer(inputs)
@@ -302,7 +309,9 @@ class Classifier(nn.Module):
         self.layers_is_next[i] = nn.Linear(in_features=input_size, out_features=output_size).to(device)
 
         self.dropout = nn.Dropout(p=.5)
-        self.activation = nn.Sigmoid()
+        
+        self.activation = nn.ReLU()
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, inputs):
         # inputs: (batch_size, embedding_size)
@@ -310,15 +319,24 @@ class Classifier(nn.Module):
         inputs_is_noise = inputs
         for layer in self.layers_is_noise.values():
             outputs_is_noise = layer(self.dropout(inputs_is_noise))
+            try:
+                outputs_is_noise = self.activation(outputs_is_noise+inputs)
+            except:
+                outputs_is_noise = self.activation(outputs_is_noise)
             inputs_is_noise = outputs_is_noise
         outputs_is_noise = inputs_is_noise.squeeze()
-        outputs_is_noise = self.activation(outputs_is_noise)
+        outputs_is_noise = self.sigmoid(outputs_is_noise)
 
         inputs_is_next = inputs
         for layer in self.layers_is_next.values():
             outputs_is_next = layer(self.dropout(inputs_is_next))
+            try:
+                outputs_is_next = self.activation(outputs_is_next+intputs)
+            except:
+                outputs_is_next = self.activation(outputs_is_next)
             inputs_is_next = outputs_is_next
         outputs_is_next = inputs_is_next.squeeze()
-        outputs_is_next = self.activation(outputs_is_next)
+        outputs_is_next = self.sigmoid(outputs_is_next)
 
         return outputs_is_noise, outputs_is_next
+

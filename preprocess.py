@@ -17,7 +17,7 @@ middle_sound_list = ['<empty_middle_sound>', 'ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 
 last_sound_list = ['<empty_last_sound>', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ']
 
 number_list = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']
-symbol_list = ['`', '~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '_', '=', '+', '\\', '|', '[', ']', '{', '}', ';', ':', '"', "'", ',', '.', '<', '>', '?', '/', ' ']
+symbol_list = ['·', '`', '~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '_', '=', '+', '\\', '|', '[', ']', '{', '}', ';', ':', '"', "'", ',', '.', '<', '>', '?', '/', ' ']
 alphabet_list = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
 
 special_tokens = ['<phoneme_pad>', '<unk>']
@@ -28,6 +28,7 @@ vector_dim = 300
 max_len_sentence = 50
 min_len_sentence = 10
 max_len_morpheme = 5
+train_ratio = 0.6
 
 # file paths
 here = os.path.dirname(os.path.abspath(__file__))
@@ -35,6 +36,8 @@ file_path_tokens_map = os.path.join(here, 'data', 'tokens_map.json')
 file_path_vectors_map = os.path.join(here, 'data', 'vectors_map.txt')
 file_path_ko_wiki_data = os.path.join(here, 'data', 'wikiextractor', 'text')
 file_path_preprocessed_data = os.path.join(here, 'data', 'data.txt')
+file_path_train_data = os.path.join(here, 'data', 'train.txt')
+file_path_test_data = os.path.join(here, 'data', 'test.txt')
 
 
 def normalized_random_vector(dim=300):
@@ -110,15 +113,16 @@ def check_appropriate_sentence(text):
 
 def ko_wiki_pre_process(file_path_ko_wiki_data, file_path_preprocessed_data):
     with open(file_path_preprocessed_data, 'w', encoding='utf-8') as o:
-        path_name_list = os.listdir(file_path_ko_wiki_data)
+        path_name_list = sorted(os.listdir(file_path_ko_wiki_data))
         for path_name in path_name_list:
-            file_name_list = os.listdir(os.path.join(file_path_ko_wiki_data, path_name))
+            file_name_list = sorted(os.listdir(os.path.join(file_path_ko_wiki_data, path_name)))
             for file_name in file_name_list:
                 print(path_name, file_name)
                 with open(os.path.join(file_path_ko_wiki_data, path_name, file_name), 'r', encoding='utf-8') as f:
                     lines = f.readlines()
                     previous_line = ''
                     for current_line in lines:
+                        current_line = current_line.lower()
                         if '<doc' in current_line:
                             previous_line = current_line
                         elif '<doc' in previous_line or '</doc' in current_line or current_line == '':
@@ -172,6 +176,21 @@ def korean_into_phoneme(text):
     return phoneme_list_without_word_phrase
 
 
+def data_into_train_test():
+    with open(file_path_preprocessed_data, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+        len_data = len(lines)
+        split = int(len_data*train_ratio)
+        
+        with open(file_path_train_data, 'w', encoding='utf-8') as train:
+            for line in lines[:split]:
+                train.write(line)
+        with open(file_path_test_data, 'w', encoding='utf-8') as test:
+            for line in lines[split:]:
+                test.write(line)
+
+
 if __name__ == '__main__':
     init_vectors_map()
-    ko_wiki_pre_process(file_path_ko_wiki_data=file_path_ko_wiki_data, file_path_preprocessed_data=file_path_preprocessed_data)
+    # ko_wiki_pre_process(file_path_ko_wiki_data=file_path_ko_wiki_data, file_path_preprocessed_data=file_path_preprocessed_data)
+    data_into_train_test()

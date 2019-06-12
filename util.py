@@ -316,7 +316,7 @@ def save_checkpoint(filepath, epoch, waiting, model, model_optimizer, mean_loss,
     torch.save(state, filepath)
     # If this checkpoint is the best so far, store a copy so it doesn't get overwritten by a worse checkpoint
     if is_best:
-        torch.save(state, 'BEST_' + filepath)
+        torch.save(state, filepath + '_best')
 
 
 if __name__ == '__main__':
