@@ -45,11 +45,11 @@ syllable_num_layers = 2
 syllable_layer_type = 'linear'
 attention_num_layer = 2
 attention_type = 'general'
-morpheme_num_layers = 2
+morpheme_num_layers = 1
 morpheme_layer_type = 'lstm'
-sentence_num_layers = 2
+sentence_num_layers = 1
 sentence_layer_type = 'lstm'
-classifier_num_layer = 2
+classifier_num_layer = 3
 
 start_epoch = 0
 epochs = 1000

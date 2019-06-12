@@ -307,8 +307,7 @@ class Classifier(nn.Module):
 
         self.dropout = nn.Dropout(p=.5)
         
-        self.activation = nn.ReLU()
-        self.sigmoid = nn.Sigmoid()
+        self.activation = nn.Sigmoid()
 
     def forward(self, inputs):
         # inputs: (batch_size, embedding_size)
@@ -322,7 +321,6 @@ class Classifier(nn.Module):
                 outputs_is_noise = self.activation(outputs_is_noise)
             inputs_is_noise = outputs_is_noise
         outputs_is_noise = inputs_is_noise.squeeze()
-        outputs_is_noise = self.sigmoid(outputs_is_noise)
 
         inputs_is_next = inputs
         for layer in self.layers_is_next.values():
@@ -333,6 +331,5 @@ class Classifier(nn.Module):
                 outputs_is_next = self.activation(outputs_is_next)
             inputs_is_next = outputs_is_next
         outputs_is_next = inputs_is_next.squeeze()
-        outputs_is_next = self.sigmoid(outputs_is_next)
 
         return outputs_is_noise, outputs_is_next
