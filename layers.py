@@ -89,7 +89,7 @@ class AttentionLayer(nn.Module):
         combined = combined.view(-1, len_morpheme*2)
 
         outputs = self.linear_out_morpheme[iter_layer](combined).view(batch_size, embedding_size, len_sentence, len_morpheme)
-        outputs = outputs.transpose(1, 2).tranpose(2, 3)
+        outputs = outputs.transpose(1, 2).transpose(2, 3)
         outputs = self.activation(outputs + inputs)
 
         return outputs
@@ -104,7 +104,7 @@ class SyllableLayer(nn.Module):
             raise ValueError('Invalid syllable layer type selected.')
 
         self.embedding = nn.Embedding(vocab_size, embedding_size)
-        self.set_embedding_param(language.get_vectors())  # init embedding weight
+        # self.set_embedding_param(language.get_vectors())  # init embedding weight
         self.input_size = input_size
 
         self.layers = {}
