@@ -104,7 +104,7 @@ class SyllableLayer(nn.Module):
             raise ValueError('Invalid syllable layer type selected.')
 
         self.embedding = nn.Embedding(vocab_size, embedding_size)
-        self.set_embedding_param(language.get_vectors())  # init embedding weight
+        # self.set_embedding_param(language.get_vectors())  # init embedding weight
         self.input_size = input_size
 
         self.layers = {}

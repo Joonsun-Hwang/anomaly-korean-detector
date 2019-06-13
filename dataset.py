@@ -35,9 +35,6 @@ class KoreanDataset(Dataset):
         self.noise = noise
         self.continuous = continuous
 
-        if self.continuous:
-            self.max_len_sentence = int(self.max_len_sentence / 2)
-
     def __getitem__(self, i):
         noise_threshold = np.random.uniform(0, 1, 1)
         if not self.noise:
@@ -69,23 +66,19 @@ class KoreanDataset(Dataset):
 
         origin_sentence = self.data[i]
         origin_sentence_list = tokenize.sent_tokenize(origin_sentence)
-        if len(origin_sentence_list) != 2:
-            print(len(origin_sentence_list))
 
-        enc_sentence_previous, mask_previous = self.make_enc_sentence(origin_sentence=origin_sentence_list[0], noise_type=noise_type)
         if not self.continuous:
-            return noise_type, continuity_type, origin_sentence, enc_sentence_previous, mask_previous
+            enc_sentence, mask = self.make_enc_sentence(origin_sentence=origin_sentence_list[0], noise_type=noise_type)
+            return noise_type, continuity_type, origin_sentence, enc_sentence, mask
 
         if continuity_type == 'yes':
-            enc_sentence_next, mask_next = self.make_enc_sentence(origin_sentence=origin_sentence_list[1], noise_type=noise_type)
+            enc_sentence, mask = self.make_enc_sentence(origin_sentence=origin_sentence, noise_type=noise_type)
         else:
             rand_idx = np.random.randint(self.__len__())
             rand_sentence = self.data[rand_idx]
             rand_sentence_list = tokenize.sent_tokenize(rand_sentence)
-            enc_sentence_next, mask_next = self.make_enc_sentence(origin_sentence=rand_sentence_list[1], noise_type=noise_type)
-
-        enc_sentence = torch.cat((enc_sentence_previous, enc_sentence_next), dim=0)
-        mask = torch.cat((mask_previous, mask_next), dim=0)
+            rand_sentence = origin_sentence_list[0] + ' ' + rand_sentence_list[1]
+            enc_sentence, mask = self.make_enc_sentence(origin_sentence=rand_sentence, noise_type=noise_type)
 
         return noise_type, continuity_type, origin_sentence, enc_sentence, mask
 
