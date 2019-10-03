@@ -6,7 +6,7 @@ from layers import SyllableLayer, AttentionLayer, MorphemeLayer, SentenceLayer, 
 
 class AnomalyKoreanDetector(nn.Module):
     def __init__(self, len_morpheme, len_sentence, syllable_layer_type, syllable_num_layers,
-                 language, vocab_size, attention_num_layer,
+                 vocab_size, attention_num_layer,
                  morpheme_layer_type, morpheme_num_layers,
                  sentence_layer_type, sentence_num_layers,
                  classifier_num_layer,
@@ -15,7 +15,7 @@ class AnomalyKoreanDetector(nn.Module):
                  attention_type='general'):
         super(AnomalyKoreanDetector, self).__init__()
         self.syllable_layer = SyllableLayer(layer_type=syllable_layer_type, num_layers=syllable_num_layers,
-                                            language=language, vocab_size=vocab_size, embedding_size=embedding_size,
+                                            vocab_size=vocab_size, embedding_size=embedding_size,
                                             input_size=phoneme_in_size, output_size=phoneme_out_size)
         self.attention_layer = AttentionLayer(embedding_size=embedding_size,
                                               len_morpheme=len_morpheme,

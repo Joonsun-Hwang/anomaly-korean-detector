@@ -58,8 +58,8 @@ class AttentionLayer(nn.Module):
             inputs_morpheme = inputs_morpheme.view(-1, len_morpheme, embedding_size)
             inputs_sentence = inputs_sentence.view(-1, len_sentence, len_morpheme)
 
-        attention_scores_morpheme = torch.bmm(inputs_morpheme, inputs_morpheme.transpose(1, 2).contiguous()) / math.sqrt(inputs_morpheme.size(-1))  # (batch_size*len_sentence, len_morpheme, len_morpheme)
-        attention_scores_sentence = torch.bmm(inputs_sentence, inputs_sentence.transpose(1, 2).contiguous()) / math.sqrt(inputs_morpheme.size(-1))  # (batch_size*embedding_size, len_sentence, len_sentence)
+        attention_scores_morpheme = torch.bmm(inputs_morpheme, inputs_morpheme.transpose(1, 2).contiguous()) / math.sqrt(inputs_morpheme.size(-2))  # (batch_size*len_sentence, len_morpheme, len_morpheme)
+        attention_scores_sentence = torch.bmm(inputs_sentence, inputs_sentence.transpose(1, 2).contiguous()) / math.sqrt(inputs_sentence.size(-2))  # (batch_size*embedding_size, len_sentence, len_sentence)
         attention_scores_morpheme = Variable(attention_scores_morpheme.view(-1, len_morpheme))  # avoid inplace operation
         attention_scores_sentence = Variable(attention_scores_sentence.view(-1, len_sentence))
         if iter_layer == 0 and mask is not None:
@@ -96,7 +96,7 @@ class AttentionLayer(nn.Module):
 
 
 class SyllableLayer(nn.Module):
-    def __init__(self, layer_type, num_layers, language, vocab_size,
+    def __init__(self, layer_type, num_layers, vocab_size,
                  embedding_size=300, input_size=3, output_size=1):
         super(SyllableLayer, self).__init__()
 

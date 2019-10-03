@@ -16,9 +16,10 @@ middle_sound_list = ['<empty_middle_sound>', 'ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 
 # 종성 리스트. 00 ~ 27 + 1(1개 없음)
 last_sound_list = ['<empty_last_sound>', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ']
 
-number_list = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']
-symbol_list = ['·', '`', '~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '_', '=', '+', '\\', '|', '[', ']', '{', '}', ';', ':', '"', "'", ',', '.', '<', '>', '?', '/', ' ']
-alphabet_list = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
+# number_list = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']
+# symbol_list = ['·', '`', '~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '_', '=', '+', '\\', '|', '[', ']', '{', '}', ';', ':', '"', "'", ',', '.', '<', '>', '?', '/', ' ']
+# alphabet_list = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
+non_korean_list = []
 
 special_tokens = ['<phoneme_pad>', '<unk>']
 
@@ -66,23 +67,28 @@ def get_korean_last_sound_list():
     return sorted(set(token_list))
 
 
-def get_number_list():
-    token_list = number_list
+def get_non_korean_token_list():
+    token_list = non_korean_list
     return sorted(set(token_list))
 
 
-def get_alphabet_list():
-    token_list = alphabet_list
-    return sorted(set(token_list))
-
-
-def get_symbol_list():
-    token_list = symbol_list
-    return sorted(set(token_list))
+# def get_number_list():
+#     token_list = number_list
+#     return sorted(set(token_list))
+#
+#
+# def get_alphabet_list():
+#     token_list = alphabet_list
+#     return sorted(set(token_list))
+#
+#
+# def get_symbol_list():
+#     token_list = symbol_list
+#     return sorted(set(token_list))
 
 
 def init_vectors_map():
-    token_list = first_sound_list + middle_sound_list + last_sound_list + number_list + symbol_list + alphabet_list + special_tokens
+    token_list = first_sound_list + middle_sound_list + last_sound_list + special_tokens + non_korean_list
     token_set = sorted(set(token_list))
 
     i = 0
@@ -173,6 +179,12 @@ def korean_into_phoneme(text):
             word_phrase = [x for x in word_phrase if x != [[]]]
             phoneme_list_without_word_phrase += word_phrase
 
+    for morpheme in phoneme_list_without_word_phrase:
+        for syllable in morpheme:
+            for phoneme in syllable:
+                if phoneme not in get_korean_phonemes_list():
+                    non_korean_list.append(phoneme)
+
     return phoneme_list_without_word_phrase
 
 
@@ -191,6 +203,6 @@ def data_into_train_test():
 
 
 if __name__ == '__main__':
+    ko_wiki_pre_process(file_path_ko_wiki_data=file_path_ko_wiki_data, file_path_preprocessed_data=file_path_preprocessed_data)
     init_vectors_map()
-    # ko_wiki_pre_process(file_path_ko_wiki_data=file_path_ko_wiki_data, file_path_preprocessed_data=file_path_preprocessed_data)
     data_into_train_test()

@@ -5,8 +5,7 @@ from torch.autograd import Variable
 import hgtk
 from konlpy.tag import Komoran
 
-from preprocess import get_korean_phonemes_list, get_korean_first_sound_list, get_korean_middle_sound_list, get_korean_last_sound_list, \
-    get_alphabet_list, get_number_list, get_symbol_list
+from preprocess import get_korean_phonemes_list, get_korean_first_sound_list, get_korean_middle_sound_list, get_korean_last_sound_list
 
 split_token = 'ᴥ'
 komoran = Komoran()
