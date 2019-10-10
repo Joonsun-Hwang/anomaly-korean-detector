@@ -5,7 +5,8 @@ from torch.autograd import Variable
 import hgtk
 from konlpy.tag import Komoran
 
-from preprocess import get_korean_phonemes_list, get_korean_first_sound_list, get_korean_middle_sound_list, get_korean_last_sound_list
+from preprocess import get_korean_phonemes_list, get_korean_first_sound_list, get_korean_middle_sound_list, \
+    get_korean_last_sound_list, get_non_korean_token_list
 
 split_token = 'ᴥ'
 komoran = Komoran()
@@ -116,15 +117,9 @@ def add_noise(phoneme_list, noise):
                                 if syllable[0] in get_korean_phonemes_list():
                                     last_sound_idx = np.random.randint(low=1, high=len(get_korean_last_sound_list()))
                                     phoneme_list_with_noise[idx_wp][idx_m][idx_s] = [get_korean_last_sound_list()[last_sound_idx]]
-                                elif syllable[0] in get_alphabet_list():
-                                    list_idx = np.random.randint(low=0, high=len(get_alphabet_list()))
-                                    phoneme_list_with_noise[idx_wp][idx_m][idx_s] = [get_alphabet_list()[list_idx]]
-                                elif syllable[0] in get_number_list():
-                                    list_idx = np.random.randint(low=0, high=len(get_number_list()))
-                                    phoneme_list_with_noise[idx_wp][idx_m][idx_s] = [get_number_list()[list_idx]]
-                                elif syllable[0] in get_symbol_list():
-                                    list_idx = np.random.randint(low=0, high=len(get_symbol_list()))
-                                    phoneme_list_with_noise[idx_wp][idx_m][idx_s] = [get_symbol_list()[list_idx]]
+                                elif syllable[0] in get_non_korean_token_list():
+                                    list_idx = np.random.randint(low=0, high=len(get_non_korean_token_list()))
+                                    phoneme_list_with_noise[idx_wp][idx_m][idx_s] = [get_non_korean_token_list()[list_idx]]
                             else:
                                 pass
 
@@ -156,15 +151,9 @@ def add_noise(phoneme_list, noise):
                                 if syllable[0] in get_korean_phonemes_list():
                                     last_sound_idx = np.random.randint(low=1, high=len(get_korean_last_sound_list()))
                                     phoneme_list_with_noise[idx_wp][idx_m][idx_s] = [get_korean_last_sound_list()[last_sound_idx]]
-                                elif syllable[0] in get_alphabet_list():
-                                    list_idx = np.random.randint(low=0, high=len(get_alphabet_list()))
-                                    phoneme_list_with_noise[idx_wp][idx_m][idx_s] = [get_alphabet_list()[list_idx]]
-                                elif syllable[0] in get_number_list():
-                                    list_idx = np.random.randint(low=0, high=len(get_number_list()))
-                                    phoneme_list_with_noise[idx_wp][idx_m][idx_s] = [get_number_list()[list_idx]]
-                                elif syllable[0] in get_symbol_list():
-                                    list_idx = np.random.randint(low=0, high=len(get_symbol_list()))
-                                    phoneme_list_with_noise[idx_wp][idx_m][idx_s] = [get_symbol_list()[list_idx]]
+                                elif syllable[0] in get_non_korean_token_list():
+                                    list_idx = np.random.randint(low=0, high=len(get_non_korean_token_list()))
+                                    phoneme_list_with_noise[idx_wp][idx_m][idx_s] = [get_non_korean_token_list()[list_idx]]
                             else:
                                 pass
 
@@ -195,15 +184,9 @@ def add_noise(phoneme_list, noise):
                                 if syllable[0] in get_korean_phonemes_list():
                                     last_sound_idx = np.random.randint(low=1, high=len(get_korean_last_sound_list()))
                                     phoneme_list_with_noise[idx_wp][idx_m][idx_s] = [get_korean_last_sound_list()[last_sound_idx]]
-                                elif syllable[0] in get_alphabet_list():
-                                    list_idx = np.random.randint(low=0, high=len(get_alphabet_list()))
-                                    phoneme_list_with_noise[idx_wp][idx_m][idx_s] = [get_alphabet_list()[list_idx]]
-                                elif syllable[0] in get_number_list():
-                                    list_idx = np.random.randint(low=0, high=len(get_number_list()))
-                                    phoneme_list_with_noise[idx_wp][idx_m][idx_s] = [get_number_list()[list_idx]]
-                                elif syllable[0] in get_symbol_list():
-                                    list_idx = np.random.randint(low=0, high=len(get_symbol_list()))
-                                    phoneme_list_with_noise[idx_wp][idx_m][idx_s] = [get_symbol_list()[list_idx]]
+                                elif syllable[0] in get_non_korean_token_list():
+                                    list_idx = np.random.randint(low=0, high=len(get_non_korean_token_list()))
+                                    phoneme_list_with_noise[idx_wp][idx_m][idx_s] = [get_non_korean_token_list()[list_idx]]
                             else:
                                 pass
 
@@ -222,15 +205,9 @@ def add_noise(phoneme_list, noise):
                                     if phoneme in get_korean_phonemes_list():
                                         first_sound_idx = np.random.randint(low=1, high=len(get_korean_first_sound_list()))
                                         phoneme_list_with_noise[idx_wp][idx_m][idx_s][idx_p] = get_korean_first_sound_list()[first_sound_idx]
-                                    elif phoneme in get_alphabet_list():
-                                        list_idx = np.random.randint(low=0, high=len(get_alphabet_list()))
-                                        phoneme_list_with_noise[idx_wp][idx_m][idx_s][idx_p] = get_alphabet_list()[list_idx]
-                                    elif phoneme in get_number_list():
-                                        list_idx = np.random.randint(low=0, high=len(get_number_list()))
-                                        phoneme_list_with_noise[idx_wp][idx_m][idx_s][idx_p] = get_number_list()[list_idx]
-                                    elif phoneme in get_symbol_list():
-                                        list_idx = np.random.randint(low=0, high=len(get_symbol_list()))
-                                        phoneme_list_with_noise[idx_wp][idx_m][idx_s][idx_p] = get_symbol_list()[list_idx]
+                                    elif syllable[0] in get_non_korean_token_list():
+                                        list_idx = np.random.randint(low=0, high=len(get_non_korean_token_list()))
+                                        phoneme_list_with_noise[idx_wp][idx_m][idx_s] = [get_non_korean_token_list()[list_idx]]
                                 elif idx_p == 1:
                                     middle_sound_idx = np.random.randint(low=1, high=len(get_korean_middle_sound_list()))
                                     phoneme_list_with_noise[idx_wp][idx_m][idx_s][idx_p] = get_korean_middle_sound_list()[middle_sound_idx]

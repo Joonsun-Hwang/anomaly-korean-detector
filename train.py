@@ -24,8 +24,8 @@ os.mkdir(os.path.join(here, now))
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # sets device for model and PyTorch tensors
 
 # Data parameters
-noise = True
-continuous = True
+noise = False
+continuous = False
 if continuous:
     max_len_sentence = 50 * 2
 else:

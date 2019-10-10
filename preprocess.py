@@ -36,7 +36,8 @@ here = os.path.dirname(os.path.abspath(__file__))
 file_path_tokens_map = os.path.join(here, 'data', 'tokens_map.json')
 file_path_vectors_map = os.path.join(here, 'data', 'vectors_map.txt')
 file_path_ko_wiki_data = os.path.join(here, 'data', 'wikiextractor', 'text')
-file_path_preprocessed_data = os.path.join(here, 'data', 'data.txt')
+file_path_preprocessed_data_doc = os.path.join(here, 'data', 'data_doc.txt')
+file_path_preprocessed_data_sentence = os.path.join(here, 'data', 'data_sentence.txt')
 file_path_train_data = os.path.join(here, 'data', 'train.txt')
 file_path_test_data = os.path.join(here, 'data', 'test.txt')
 
@@ -117,39 +118,44 @@ def check_appropriate_sentence(text):
         return False
 
 
-def ko_wiki_pre_process(file_path_ko_wiki_data, file_path_preprocessed_data):
-    with open(file_path_preprocessed_data, 'w', encoding='utf-8') as o:
-        path_name_list = sorted(os.listdir(file_path_ko_wiki_data))
-        for path_name in path_name_list:
-            file_name_list = sorted(os.listdir(os.path.join(file_path_ko_wiki_data, path_name)))
-            for file_name in file_name_list:
-                print(path_name, file_name)
-                with open(os.path.join(file_path_ko_wiki_data, path_name, file_name), 'r', encoding='utf-8') as f:
-                    lines = f.readlines()
-                    previous_line = ''
-                    for current_line in lines:
-                        current_line = current_line.lower()
-                        if '<doc' in current_line:
-                            previous_line = current_line
-                        elif '<doc' in previous_line or '</doc' in current_line or current_line == '':
-                            previous_line = ''
-                        else:
-                            current_sentences = tokenize.sent_tokenize(current_line.strip())
-                            current_sentences = list(filter(None, current_sentences))
-                            if current_sentences:
-                                if previous_line:
-                                    if check_appropriate_sentence(previous_line) and \
-                                            check_appropriate_sentence(current_sentences[0]):
-                                        data = previous_line + ' ' + current_sentences[0] + '\n'
-                                        o.write(data)
-                                for i in range(len(current_sentences)-1):
-                                    if check_appropriate_sentence(current_sentences[i]) and \
-                                            check_appropriate_sentence(current_sentences[i+1]):
-                                        data = current_sentences[i] + ' ' + current_sentences[i+1] + '\n'
-                                        o.write(data)
-                                previous_line = current_sentences[-1]
-                            else:
+def ko_wiki_pre_process(file_path_ko_wiki_data, file_path_preprocessed_data_sentence, file_path_preprocessed_data_doc):
+    with open(file_path_preprocessed_data_doc, 'w', encoding='utf-8') as o_doc:
+        with open(file_path_preprocessed_data_sentence, 'w', encoding='utf-8') as o_sentence:
+            path_name_list = sorted(os.listdir(file_path_ko_wiki_data))
+            for path_name in path_name_list:
+                file_name_list = sorted(os.listdir(os.path.join(file_path_ko_wiki_data, path_name)))
+                for file_name in file_name_list:
+                    print(path_name, file_name)
+                    with open(os.path.join(file_path_ko_wiki_data, path_name, file_name), 'r', encoding='utf-8') as f:
+                        lines = f.readlines()
+                        previous_line = ''
+                        for current_line in lines:
+                            current_line = current_line.lower()
+                            if '<doc' in current_line:
+                                previous_line = current_line
+                                o_doc.write('\n')
+                            elif '<doc' in previous_line or '</doc' in current_line or current_line == '':
                                 previous_line = ''
+                            else:
+                                current_sentences = tokenize.sent_tokenize(current_line.strip())
+                                current_sentences = list(filter(None, current_sentences))
+                                if current_sentences:
+                                    if previous_line:
+                                        if check_appropriate_sentence(previous_line) and \
+                                                check_appropriate_sentence(current_sentences[0]):
+                                            data = previous_line + ' ' + current_sentences[0] + '\n'
+                                            o_sentence.write(data)
+                                    for i in range(len(current_sentences)-1):
+                                        if check_appropriate_sentence(current_sentences[i]) and \
+                                                check_appropriate_sentence(current_sentences[i+1]):
+                                            data = current_sentences[i] + ' ' + current_sentences[i+1] + '\n'
+                                            o_sentence.write(data)
+                                            o_doc.write(current_sentences[i] + ' ')
+                                    if check_appropriate_sentence(current_sentences[-1]):
+                                        o_doc.write(current_sentences[-1] + ' ')
+                                    previous_line = current_sentences[-1]
+                                else:
+                                    previous_line = ''
 
 
 def morpheme_into_phoneme(korean_word):
@@ -189,7 +195,7 @@ def korean_into_phoneme(text):
 
 
 def data_into_train_test():
-    with open(file_path_preprocessed_data, 'r', encoding='utf-8') as f:
+    with open(file_path_preprocessed_data_sentence, 'r', encoding='utf-8') as f:
         lines = f.readlines()
         len_data = len(lines)
         split = int(len_data*train_ratio)
@@ -203,6 +209,8 @@ def data_into_train_test():
 
 
 if __name__ == '__main__':
-    ko_wiki_pre_process(file_path_ko_wiki_data=file_path_ko_wiki_data, file_path_preprocessed_data=file_path_preprocessed_data)
+    ko_wiki_pre_process(file_path_ko_wiki_data=file_path_ko_wiki_data,
+                        file_path_preprocessed_data_sentence=file_path_preprocessed_data_sentence,
+                        file_path_preprocessed_data_doc=file_path_preprocessed_data_doc)
     init_vectors_map()
     data_into_train_test()
