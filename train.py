@@ -25,7 +25,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # sets de
 
 # Data parameters
 noise = False
-continuous = False
+continuous = True
 if continuous:
     max_len_sentence = 50 * 2
 else:
@@ -43,22 +43,22 @@ validation_split = .2
 shuffle_dataset = True
 syllable_num_layers = 1
 syllable_layer_type = 'linear'
-attention_num_layer = 1
-attention_type = 'general'
-morpheme_num_layers = 1
+attention_num_layer = 4
+attention_type = 'dot'
+morpheme_num_layers = 2
 morpheme_layer_type = 'lstm'
-sentence_num_layers = 1
+sentence_num_layers = 2
 sentence_layer_type = 'lstm'
 classifier_num_layer = 2
 
 start_epoch = 0
-epochs = 1e+10
+epochs = int(1e+10)
 best_loss = 100
 patience = 10  # maximum number of epochs to wait when min loss is not updated
 waiting = 0  # how many times min loss has not been updated as it follows the epoch.
 weight_decay_percentage = 0.9
 weight_decay_per_epoch = 5  # decaying the weight if min loss is not updated within 'wait_decay_per_epoch'.
-batch_size = 64
+batch_size = 128
 model_lr = 4e-4  # learning rate for encoder
 grad_clip = 5.
 print_freq = 100  # print training status every 100 iterations, print validation status every epoch

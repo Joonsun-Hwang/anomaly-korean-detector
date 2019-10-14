@@ -75,6 +75,8 @@ class KoreanDataset(Dataset):
             enc_sentence, mask = self.make_enc_sentence(origin_sentence=origin_sentence, noise_type=noise_type)
         else:
             rand_idx = np.random.randint(self.__len__())
+            while rand_idx == i:
+                rand_idx = np.random.randint(self.__len__())
             rand_sentence = self.data[rand_idx]
             rand_sentence_list = tokenize.sent_tokenize(rand_sentence)
             rand_sentence = origin_sentence_list[0] + ' ' + rand_sentence_list[1]
@@ -90,6 +92,7 @@ class KoreanDataset(Dataset):
         padded_sentence_phoneme = sentence_phoneme + [[[]]] * (self.max_len_sentence - num_morpheme)
         mask += [[[0]]] * (self.max_len_sentence - num_morpheme)
         enc_sentence = []
+        print(padded_sentence_phoneme, mask)
         for idx, (morpheme_phoneme, morpheme_mask) in enumerate(zip(padded_sentence_phoneme, mask)):
             padded_morpheme_phoneme = morpheme_phoneme + [[]] * (self.max_len_morpheme - len(morpheme_phoneme))
             if mask[idx] == [[1]]:
@@ -105,21 +108,21 @@ class KoreanDataset(Dataset):
                                    [self.token_map['<empty_last_sound>']]
                 elif len(phonemes) == 1:
                     if phonemes[0] in get_korean_phonemes_list():  # 형태소 단위 음소가 한글일 경우, 그 앞 형태소의 받침. 따라서 종성으로 처리
-                        enc_phonemes = [self.token_map['<empty_first_sound>']] + [
-                            self.token_map['<empty_middle_sound>']] + \
+                        enc_phonemes = [self.token_map['<empty_first_sound>']] + [self.token_map['<empty_middle_sound>']] + \
                                        [self.token_map.get(phoneme, self.token_map['<unk>']) for phoneme in phonemes]
                     else:  # 한글이 아닐 경우, 초성으로 처리
                         enc_phonemes = [self.token_map.get(phoneme, self.token_map['<unk>']) for phoneme in phonemes] + \
                                        [self.token_map['<empty_middle_sound>']] + [self.token_map['<empty_last_sound>']]
                 else:  # padding 처리
-                    enc_phonemes = [self.token_map['<phoneme_pad>']] * 3
+                    enc_phonemes = [self.token_map['<empty_first_sound>']] + [self.token_map['<empty_middle_sound>']] + \
+                                   [self.token_map['<empty_middle_sound>']]
                 enc_morpheme.append(enc_phonemes)
             enc_sentence.append(enc_morpheme)
+        exit()
 
         enc_sentence = torch.LongTensor(enc_sentence)  # (len_sentence, len_morpheme, len_phoneme)
         # print(enc_sentence.size())
         mask = torch.FloatTensor(mask)  # (len_sentence, len_morpheme, 1)
-
         return enc_sentence, mask
 
     def __len__(self):

@@ -16,6 +16,9 @@ class AttentionLayer(nn.Module):
         else:
             self.attention_type = attention_type
 
+        self.linear_layers_by_embedding = nn.ModuleList([nn.Linear(embedding_size, embedding_size) for _ in range(3)])
+        self.linear_layers_by_sentence = nn.ModuleList([nn.Linear(embedding_size, embedding_size) for _ in range(3)])
+
         self.linear_in_syllable = {}
         self.linear_in_morpheme = {}
         self.linear_out_morpheme = {}
@@ -43,23 +46,33 @@ class AttentionLayer(nn.Module):
             mask = torch.cat([mask]*embedding_size, dim=3)  # (batch_size, len_sentence, len_morpheme, embedding_size)
 
         inputs_morpheme = inputs.view(-1, len_morpheme, embedding_size)  # (batch_size * len_sentence, len_morpheme, embedding_size)
+        query_morpheme, key_morpheme, value_morpheme = [l(x).view(-1, len_morpheme, embedding_size)
+                                                        for l, x in zip(self.linear_layers_by_embedding,
+                                                                        (inputs_morpheme.view(-1, embedding_size),
+                                                                         inputs_morpheme.view(-1, embedding_size),
+                                                                         inputs_morpheme.view(-1, embedding_size)))]
         inputs_sentence = inputs.transpose(2, 3).transpose(1, 2).contiguous()
         inputs_sentence = inputs_sentence.view(-1, len_sentence, len_morpheme)  # (batch_size * embedding_size, len_sentence, len_morpheme)
+        query_sentence, key_sentence, value_sentence = [l(x).view(-1, len_sentence, len_morpheme)
+                                                        for l, x in zip(self.linear_layers_by_sentence,
+                                                                        (inputs_sentence.view(-1, len_morpheme),
+                                                                         inputs_sentence.view(-1, len_morpheme),
+                                                                         inputs_sentence.view(-1, len_morpheme)))]
         if iter_layer == 0 and mask is not None:
             mask_morpheme = mask.view(-1, len_morpheme, embedding_size)
             mask_sentence = mask.transpose(2, 3).transpose(1, 2).contiguous()
             mask_sentence = mask_sentence.view(-1, len_sentence, len_morpheme)
 
         if self.attention_type == 'general':
-            inputs_morpheme = inputs_morpheme.view(-1, embedding_size)
-            inputs_sentence = inputs_sentence.view(-1, len_morpheme)
-            inputs_morpheme = self.linear_in_syllable[iter_layer](inputs_morpheme)
-            inputs_sentence = self.linear_in_morpheme[iter_layer](inputs_sentence)
-            inputs_morpheme = inputs_morpheme.view(-1, len_morpheme, embedding_size)
-            inputs_sentence = inputs_sentence.view(-1, len_sentence, len_morpheme)
+            query_morpheme = query_morpheme.view(-1, embedding_size)
+            query_sentence = query_sentence.view(-1, len_morpheme)
+            query_morpheme = self.linear_in_syllable[iter_layer](query_morpheme)
+            query_sentence = self.linear_in_morpheme[iter_layer](query_sentence)
+            query_morpheme = query_morpheme.view(-1, len_morpheme, embedding_size)
+            query_sentence = query_sentence.view(-1, len_sentence, len_morpheme)
 
-        attention_scores_morpheme = torch.bmm(inputs_morpheme, inputs_morpheme.transpose(1, 2).contiguous()) / math.sqrt(inputs_morpheme.size(-2))  # (batch_size*len_sentence, len_morpheme, len_morpheme)
-        attention_scores_sentence = torch.bmm(inputs_sentence, inputs_sentence.transpose(1, 2).contiguous()) / math.sqrt(inputs_sentence.size(-2))  # (batch_size*embedding_size, len_sentence, len_sentence)
+        attention_scores_morpheme = torch.bmm(query_morpheme, key_morpheme.transpose(1, 2).contiguous()) / math.sqrt(key_morpheme.size(-2))  # (batch_size*len_sentence, len_morpheme, len_morpheme)
+        attention_scores_sentence = torch.bmm(query_sentence, key_sentence.transpose(1, 2).contiguous()) / math.sqrt(key_sentence.size(-2))  # (batch_size*embedding_size, len_sentence, len_sentence)
         attention_scores_morpheme = Variable(attention_scores_morpheme.view(-1, len_morpheme))  # avoid inplace operation
         attention_scores_sentence = Variable(attention_scores_sentence.view(-1, len_sentence))
         if iter_layer == 0 and mask is not None:
@@ -79,13 +92,13 @@ class AttentionLayer(nn.Module):
         attention_weights_morpheme = attention_weights_morpheme.view(-1, len_morpheme, len_morpheme)
         attention_weights_sentence = attention_weights_sentence.view(-1, len_sentence, len_sentence)
 
-        mix = torch.bmm(attention_weights_morpheme, inputs_morpheme)  # (batch_size*len_sentence, len_morpheme, embedding_size)
+        mix = torch.bmm(attention_weights_morpheme, value_morpheme)  # (batch_size*len_sentence, len_morpheme, embedding_size)
         mix = mix.view(batch_size, len_sentence, len_morpheme, embedding_size)
         mix = mix.transpose(2, 3).transpose(1, 2).contiguous()
         mix = mix.view(-1, len_sentence, len_morpheme)
         mix = torch.bmm(attention_weights_sentence, mix)  # (batch_size*embedding_size, len_sentence, len_morpheme)
 
-        combined = torch.cat((mix, inputs_sentence), dim=2)  # (batch_size*embedding_size, len_sentence, len_morpheme*2)
+        combined = torch.cat((mix, value_sentence), dim=2)  # (batch_size*embedding_size, len_sentence, len_morpheme*2)
         combined = combined.view(-1, len_morpheme*2)
 
         outputs = self.linear_out_morpheme[iter_layer](combined).view(batch_size, embedding_size, len_sentence, len_morpheme)
