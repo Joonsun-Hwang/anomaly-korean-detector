@@ -92,7 +92,6 @@ class KoreanDataset(Dataset):
         padded_sentence_phoneme = sentence_phoneme + [[[]]] * (self.max_len_sentence - num_morpheme)
         mask += [[[0]]] * (self.max_len_sentence - num_morpheme)
         enc_sentence = []
-        print(padded_sentence_phoneme, mask)
         for idx, (morpheme_phoneme, morpheme_mask) in enumerate(zip(padded_sentence_phoneme, mask)):
             padded_morpheme_phoneme = morpheme_phoneme + [[]] * (self.max_len_morpheme - len(morpheme_phoneme))
             if mask[idx] == [[1]]:
@@ -118,7 +117,6 @@ class KoreanDataset(Dataset):
                                    [self.token_map['<empty_middle_sound>']]
                 enc_morpheme.append(enc_phonemes)
             enc_sentence.append(enc_morpheme)
-        exit()
 
         enc_sentence = torch.LongTensor(enc_sentence)  # (len_sentence, len_morpheme, len_phoneme)
         # print(enc_sentence.size())
