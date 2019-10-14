@@ -17,7 +17,7 @@ class AttentionLayer(nn.Module):
             self.attention_type = attention_type
 
         self.linear_layers_by_embedding = nn.ModuleList([nn.Linear(embedding_size, embedding_size) for _ in range(3)])
-        self.linear_layers_by_sentence = nn.ModuleList([nn.Linear(embedding_size, embedding_size) for _ in range(3)])
+        self.linear_layers_by_sentence = nn.ModuleList([nn.Linear(len_morpheme, len_morpheme) for _ in range(3)])
 
         self.linear_in_syllable = {}
         self.linear_in_morpheme = {}
